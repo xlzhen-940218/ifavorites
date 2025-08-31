@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后端请求演示</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 40px;
+        }
+        .container {
+            max-width: 900px;
+            width: 100%;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        input, button, select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            margin-top: 8px;
+        }
+        button {
+            background-color: #4f46e5;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #4338ca;
+        }
+        .message-box {
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 1rem;
+            text-align: center;
+            font-weight: 600;
+        }
+        .message-success {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .message-error {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 class="text-3xl font-bold mb-6 text-center">网络收藏夹后端请求演示</h1>
+    <p class="text-sm text-center text-gray-500 mb-4">请确保后端程序正在运行</p>
+    
+    <div id="authSection" class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <!-- 注册表单 -->
+        <div class="p-6 bg-gray-50 rounded-lg">
+            <h2 class="text-xl font-bold mb-4">注册</h2>
+            <div class="form-group">
+                <label for="registerEmail">邮箱</label>
+                <input type="email" id="registerEmail" placeholder="user@example.com">
+            </div>
+            <div class="form-group">
+                <label for="registerPassword">密码</label>
+                <input type="password" id="registerPassword">
+            </div>
+            <button id="registerBtn">注册</button>
+            <div id="registerMessage" class="message-box hidden"></div>
+        </div>
+
+        <!-- 登录表单 -->
+        <div class="p-6 bg-gray-50 rounded-lg">
+            <h2 class="text-xl font-bold mb-4">登录</h2>
+            <div class="form-group">
+                <label for="loginEmail">邮箱</label>
+                <input type="email" id="loginEmail" placeholder="user@example.com">
+            </div>
+            <div class="form-group">
+                <label for="loginPassword">密码</label>
+                <input type="password" id="loginPassword">
+            </div>
+            <button id="loginBtn">登录</button>
+            <div id="loginMessage" class="message-box hidden"></div>
+        </div>
+    </div>
+
+    <!-- 用户信息 -->
+    <div class="bg-blue-100 p-4 rounded-md mb-8">
+        <p class="font-bold">当前用户ID:</p>
+        <code id="userIdDisplay" class="break-all text-sm">未登录</code>
+    </div>
+
+    <div id="mainFunctions" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- 创建文件夹 -->
+        <div class="p-6 bg-gray-50 rounded-lg">
+            <h2 class="text-xl font-bold mb-4">创建文件夹 (函数2)</h2>
+            <div class="form-group">
+                <label for="mainFolderID">主文件夹ID</label>
+                <input type="text" id="mainFolderID">
+            </div>
+            <div class="form-group">
+                <label for="folderName">文件夹名称</label>
+                <input type="text" id="folderName">
+            </div>
+            <button id="createFolderBtn">创建</button>
+            <div id="folderMessage" class="message-box hidden"></div>
+        </div>
+        
+        <!-- 添加收藏 -->
+        <div class="p-6 bg-gray-50 rounded-lg">
+            <h2 class="text-xl font-bold mb-4">添加收藏 (函数1)</h2>
+            <div class="form-group">
+                <label for="folderID">父级ID</label>
+                <input type="text" id="folderID">
+            </div>
+            <div class="form-group">
+                <label for="bookmarkTitle">标题</label>
+                <input type="text" id="bookmarkTitle">
+            </div>
+            <div class="form-group">
+                <label for="bookmarkLink">链接</label>
+                <input type="url" id="bookmarkLink">
+            </div>
+            <div class="form-group">
+                <label for="coverID">封面文件ID</label>
+                <input type="text" id="coverID">
+            </div>
+            <div class="form-group">
+                <label for="bookmarkDesc">描述</label>
+                <input type="text" id="bookmarkDesc">
+            </div>
+            <div class="form-group">
+                <label for="fileID">文件ID(可选)</label>
+                <input type="text" id="fileID">
+            </div>
+            <button id="addBookmarkBtn">添加</button>
+            <div id="bookmarkMessage" class="message-box hidden"></div>
+        </div>
+
+        <!-- 创建主文件夹 -->
+        <div class="p-6 bg-gray-50 rounded-lg">
+            <h2 class="text-xl font-bold mb-4">创建主文件夹 (函数3)</h2>
+            <button id="createMainBtn">创建</button>
+            <div id="mainMessage" class="message-box hidden"></div>
+        </div>
+
+        <!-- 文件上传 -->
+        <div class="p-6 bg-gray-50 rounded-lg">
+            <h2 class="text-xl font-bold mb-4">文件上传 (函数8)</h2>
+            <div class="form-group">
+                <label for="fileInput">选择文件</label>
+                <input type="file" id="fileInput" class="w-full p-2 border rounded-md">
+            </div>
+            <button id="uploadFileBtn">上传</button>
+            <div id="uploadMessage" class="message-box hidden"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentUserId = null;
+    const backendUrl = "http://127.0.0.1:5000"; // 确保此URL与您的Flask服务器匹配
+
+    function showMessage(elementId, message, isSuccess) {
+        const el = document.getElementById(elementId);
+        el.textContent = message;
+        el.classList.remove('hidden', 'message-success', 'message-error');
+        if (isSuccess) {
+            el.classList.add('message-success');
+        } else {
+            el.classList.add('message-error');
+        }
+    }
+
+     async function authenticatedFetch(url, options = {}) {
+        if (!currentUserId) {
+            throw new Error('請先登錄以進行此操作。');
+        }
+
+        options.headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${currentUserId}`
+        };
+
+        return fetch(url, options);
+    }
+
+    document.getElementById('registerBtn').addEventListener('click', async () => {
+        const email = document.getElementById('registerEmail').value;
+        const password = document.getElementById('registerPassword').value;
+        const response = await fetch(`${backendUrl}/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+        showMessage('registerMessage', data.message || `注册成功，用户ID: ${data.user_id}`, data.success);
+    });
+
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        const response = await fetch(`${backendUrl}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+        if (data.success) {
+            currentUserId = data.user_id;
+            document.getElementById('userIdDisplay').textContent = currentUserId;
+            showMessage('loginMessage', `登录成功！`, true);
+        } else {
+            showMessage('loginMessage', data.message, false);
+        }
+    });
+
+    document.getElementById('createFolderBtn').addEventListener('click', async () => {
+        if (!currentUserId) {
+            showMessage('folderMessage', '请先登录', false);
+            return;
+        }
+        const name = document.getElementById('folderName').value;
+        const mainId = document.getElementById('mainFolderID').value;
+        const response = await authenticatedFetch(`${backendUrl}/create_folder`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, user_id: currentUserId, parent_id: mainId })
+        });
+        const data = await response.json();
+        showMessage('folderMessage', data.message || `创建成功，文件夹ID: ${data.folder_id}`, data.success);
+    });
+
+    document.getElementById('addBookmarkBtn').addEventListener('click', async () => {
+        if (!currentUserId) {
+            showMessage('bookmarkMessage', '请先登录', false);
+            return;
+        }
+        const title = document.getElementById('bookmarkTitle').value;
+        const link = document.getElementById('bookmarkLink').value;
+        const description = document.getElementById('bookmarkDesc').value;
+
+        const folder_id = document.getElementById('folderID').value;
+        const file_id = document.getElementById('fileID').value;
+        const cover_id = document.getElementById('coverID').value;
+
+
+        const response = await authenticatedFetch(`${backendUrl}/add_bookmark`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, link, description, folder_id, user_id: currentUserId, file_id: file_id, cover: cover_id })
+        });
+        const data = await response.json();
+        showMessage('bookmarkMessage', data.message || `添加成功，收藏ID: ${data.bookmark_id}`, data.success);
+    });
+
+    document.getElementById('createMainBtn').addEventListener('click', async () => {
+        const response = await authenticatedFetch(`${backendUrl}/create_main_folders`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        showMessage('mainMessage', data.message, data.success);
+    });
+    
+    document.getElementById('uploadFileBtn').addEventListener('click', async () => {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            showMessage('uploadMessage', '请选择一个文件。', false);
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await authenticatedFetch(`${backendUrl}/upload_file`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                showMessage('uploadMessage', `文件上传成功！文件ID: ${data.file_id}`, true);
+                console.log('文件ID:', data.file_id);
+                console.log('文件路径:', data.file_path);
+            } else {
+                showMessage('uploadMessage', `文件上传失败: ${data.message}`, false);
+            }
+        } catch (error) {
+            showMessage('uploadMessage', '网络请求失败，请检查后端服务。', false);
+            console.error('上传错误:', error);
+        }
+    });
+
+</script>
+</body>
+</html>

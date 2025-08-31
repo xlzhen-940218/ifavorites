@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <EditText
+        android:id="@+id/title_edit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="标题" />
+
+    <EditText
+        android:id="@+id/desc_edit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="介绍" />
+
+    <EditText
+        android:id="@+id/link_edit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="链接" />
+
+    <Button
+        android:id="@+id/pick_cover"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="选择封面" />
+
+    <Button
+        android:id="@+id/pick_file"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="选择文件 (可选)" />
+
+</LinearLayout>

@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的书签</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .scroll-container::-webkit-scrollbar { width: 8px; }
+        .scroll-container::-webkit-scrollbar-track { background: #e5e7eb; border-radius: 10px; }
+        .scroll-container::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; }
+        .scroll-container::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Mobile menu transition */
+        #mobile-menu.open {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen overflow-hidden flex flex-col items-center justify-center p-0 sm:p-4">
+
+    <div id="auth-screen" class="w-full max-w-sm p-8 bg-white rounded-2xl shadow-xl transition-all duration-300 transform scale-100">
+        <h2 id="auth-title" class="text-3xl font-bold text-center text-gray-800 mb-6">登录</h2>
+        <form id="auth-form" class="space-y-4">
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-700">邮箱</label>
+                <input type="email" id="email" name="email" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700">密码</label>
+                <input type="password" id="password" name="password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div id="auth-message" class="text-sm text-center font-medium"></div>
+            <button type="submit" id="auth-button" class="w-full py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                登录
+            </button>
+        </form>
+        <p class="mt-4 text-center text-sm">
+            <a href="#" id="toggle-auth" class="font-medium text-blue-600 hover:text-blue-500">没有账户？去注册</a>
+        </p>
+    </div>
+
+    <div id="app-screen" class="hidden h-full w-full max-w-7xl bg-white sm:rounded-2xl shadow-xl transition-all duration-300 transform scale-95 flex flex-row overflow-hidden relative">
+
+        <div id="mobile-menu-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden" onclick="toggleMobileMenu(false)"></div>
+
+        <div id="mobile-menu" class="absolute lg:relative h-full w-4/5 max-w-xs sm:w-64 flex flex-col bg-gray-50 border-r border-gray-200 z-40 transform -translate-x-full transition-transform duration-300 ease-in-out lg:translate-x-0">
+            <div id="main-folders-view" class="flex flex-col h-full">
+                <div class="p-4 border-b">
+                    <h3 class="text-lg font-semibold text-gray-800">主文件夹</h3>
+                </div>
+                <ul id="main-folders-list" class="space-y-2 p-4 overflow-y-auto scroll-container flex-grow"></ul>
+            </div>
+            <div id="sub-folders-view" class="hidden flex-col h-full">
+                <div class="p-4 border-b flex items-center justify-between">
+                    <div class="flex items-center">
+                        <button id="back-to-main-folders-btn" class="lg:hidden p-1 mr-2 rounded-full hover:bg-gray-200">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                        </button>
+                        <h3 class="text-lg font-semibold text-gray-800">子文件夹</h3>
+                    </div>
+                    <button id="add-folder-btn" title="新增子文件夹" class="p-2 rounded-full text-blue-600 hover:bg-blue-100">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    </button>
+                </div>
+                <ul id="sub-folders-list" class="space-y-2 p-4 overflow-y-auto scroll-container flex-grow"></ul>
+            </div>
+        </div>
+
+        <div class="flex-grow flex flex-col overflow-y-auto scroll-container">
+            <div class="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-20">
+                <div class="flex items-center">
+                    <button id="mobile-menu-btn" class="lg:hidden p-2 rounded-full hover:bg-gray-200 mr-2">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
+                    <h3 id="current-folder-name" class="text-lg font-semibold text-gray-800 truncate">所有书签</h3>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button id="add-bookmark-btn" title="新增内容" class="p-2 rounded-full text-blue-600 hover:bg-blue-100">
+                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    </button>
+                    <button id="grid-view-btn" class="p-2 rounded-lg text-gray-500 hover:bg-gray-200 hidden sm:block">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M4 11h9V4H4v7zm0 9h9v-7H4v7zm10 0h7v-7h-7v7zm0-16v7h7V4h-7z"/></svg>
+                    </button>
+                    <button id="list-view-btn" class="p-2 rounded-lg text-gray-500 hover:bg-gray-200 hidden sm:block">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M4 11h16V9H4v2zm0 4h16v-2H4v2zm0-8v2h16V7H4z"/></svg>
+                    </button>
+                    <button id="logout-btn" class="p-2 rounded-lg text-gray-500 hover:bg-gray-200">
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H7a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="bookmarks-container" class="p-4 flex-grow grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+    </div>
+
+    <div id="modal-container">
+        <div id="message-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-lg p-6 max-w-sm w-full shadow-lg text-center">
+                <p id="modal-message" class="text-gray-800 font-medium mb-4"></p>
+                <button id="modal-close-btn" class="w-full py-2 px-4 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700">确定</button>
+            </div>
+        </div>
+        <div id="add-folder-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-lg p-6 max-w-sm w-full shadow-lg">
+                <h3 class="text-lg font-semibold mb-4">新增子文件夹</h3>
+                <form id="add-folder-form">
+                    <input type="text" id="new-folder-name" placeholder="文件夹名称" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="flex justify-end space-x-2 mt-4">
+                        <button type="button" class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300" onclick="closeModal('add-folder-modal')">取消</button>
+                        <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">创建</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div id="add-bookmark-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-lg p-6 max-w-lg w-full shadow-lg max-h-[90vh] overflow-y-auto">
+                <h3 class="text-lg font-semibold mb-4">新增内容</h3>
+                <form id="add-bookmark-form" class="space-y-4">
+                    <input type="text" id="new-bookmark-title" placeholder="标题" required class="w-full px-3 py-2 border rounded-lg">
+                    <textarea id="new-bookmark-desc" placeholder="描述" rows="3" class="w-full px-3 py-2 border rounded-lg"></textarea>
+                    <input type="url" id="new-bookmark-link" placeholder="链接 (https://...)" required class="w-full px-3 py-2 border rounded-lg">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">封面图片</label>
+                        <input type="file" id="new-bookmark-cover" accept="image/*" class="w-full text-sm">
+                        <img id="cover-preview" src="" alt="封面预览" class="mt-2 rounded-lg max-h-40 hidden">
+                    </div>
+                     <div>
+                        <label class="block text-sm font-medium text-gray-700">内容文件 (可选)</label>
+                        <input type="file" id="new-bookmark-file" class="w-full text-sm">
+                        <span id="file-upload-name" class="text-sm text-gray-500 mt-1"></span>
+                    </div>
+                    <div id="add-bookmark-message" class="text-sm text-red-500"></div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300" onclick="closeModal('add-bookmark-modal')">取消</button>
+                        <button type="submit" id="add-bookmark-submit-btn" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center">创建</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full shadow-lg text-center">
+            <p id="modal-message-1" class="text-gray-800 font-medium mb-4"></p>
+            <button id="modal-close-btn-1"
+                    class="w-full py-2 px-4 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors">
+                确定
+            </button>
+        </div>
+    </div>
+
+    <div id="player-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 id="player-modal-title" class="text-lg font-semibold text-gray-800 truncate">正在播放</h3>
+                <button id="player-modal-close-btn"
+                        class="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-full p-1">
+                    <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                         stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="player-container" class="p-4 bg-gray-100 flex justify-center items-center">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM 元素引用
+        const authScreen = document.getElementById('auth-screen');
+        const appScreen = document.getElementById('app-screen');
+        const authForm = document.getElementById('auth-form');
+        const mainFoldersList = document.getElementById('main-folders-list');
+        const subFoldersList = document.getElementById('sub-folders-list');
+        const bookmarksContainer = document.getElementById('bookmarks-container');
+        const currentFolderName = document.getElementById('current-folder-name');
+        const modal = document.getElementById('modal');
+        const modalMessage = document.getElementById('modal-message-1');
+        const modalCloseBtn = document.getElementById('modal-close-btn-1');
+        const playerModal = document.getElementById('player-modal');
+        const playerModalTitle = document.getElementById('player-modal-title');
+        const playerContainer = document.getElementById('player-container');
+        const playerModalCloseBtn = document.getElementById('player-modal-close-btn');
+
+        // 移动端相关
+        const mobileMenu = document.getElementById('mobile-menu');
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+        const mainFoldersView = document.getElementById('main-folders-view');
+        const subFoldersView = document.getElementById('sub-folders-view');
+        const backToMainFoldersBtn = document.getElementById('back-to-main-folders-btn');
+
+        // 新增功能相关
+        const addFolderBtn = document.getElementById('add-folder-btn');
+        const addFolderModal = document.getElementById('add-folder-modal');
+        const addFolderForm = document.getElementById('add-folder-form');
+        const addBookmarkBtn = document.getElementById('add-bookmark-btn');
+        const addBookmarkModal = document.getElementById('add-bookmark-modal');
+        const addBookmarkForm = document.getElementById('add-bookmark-form');
+        const coverPreview = document.getElementById('cover-preview');
+        const newBookmarkCoverInput = document.getElementById('new-bookmark-cover');
+
+        // 状态变量
+        let currentUserId = null;
+        let currentMainFolderId = null;
+        let currentSubFolderId = null;
+        let currentViewMode = 'grid';
+
+        // --- 核心逻辑 ---
+
+        // 初始化
+        function init() {
+            const storedUserId = localStorage.getItem('user_id');
+            if (storedUserId) {
+                currentUserId = storedUserId;
+                showScreen('app-screen');
+                fetchMainFolders();
+            } else {
+                showScreen('auth-screen');
+            }
+        }
+
+        // --- 移动端适配逻辑 ---
+        function toggleMobileMenu(show) {
+            if (show) {
+                mobileMenu.classList.add('open');
+                mobileMenuOverlay.classList.remove('hidden');
+            } else {
+                mobileMenu.classList.remove('open');
+                mobileMenuOverlay.classList.add('hidden');
+                // 强制菜单返回主文件夹视图
+                showMainFoldersView();
+            }
+        }
+
+        function showSubFoldersView() {
+            mainFoldersView.classList.add('hidden');
+            subFoldersView.classList.remove('hidden');
+            subFoldersView.classList.add('flex');
+        }
+
+        function showMainFoldersView() {
+            subFoldersView.classList.add('hidden');
+            subFoldersView.classList.remove('flex');
+            mainFoldersView.classList.remove('hidden');
+        }
+
+        mobileMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleMobileMenu(true);
+        });
+        backToMainFoldersBtn.addEventListener('click', showMainFoldersView);
+
+        // --- 更新：显示播放器模态框的函数 ---
+        function showPlayerModal(title, url, filepath) {
+            playerModalTitle.textContent = title;
+            playerContainer.innerHTML = `<div class="loader mx-auto my-8"></div>`; // 显示加载动画
+            playerModal.classList.remove('hidden');
+            playerModal.classList.add('flex');
+
+            const extension = filepath.split('.').pop().toLowerCase();
+            let playerElement = '';
+
+            if (['mp4', 'webm', 'ogg'].includes(extension)) {
+                playerElement = `<div><video src="${filepath}" controls autoplay class="w-full max-h-[70vh] rounded-lg"></video><br><a href="${url}">原视频链接</a></div>`;
+            } else if (['mp3', 'wav', 'flac'].includes(extension)) {
+                playerElement = `<div><audio src="${filepath}" controls autoplay class="w-full"></audio><br><a href="${url}">原音频链接</a></div>`;
+            } else {
+                playerElement = `<div><p class="text-center text-red-500">不支持的文件类型。</p><br><a href="${url}">原视频链接</a></div>`;
+                URL.revokeObjectURL(filepath); // 如果不支持，立即释放URL
+            }
+            playerContainer.innerHTML = playerElement;
+        }
+
+        // --- 更新：隐藏播放器模态框的函数，增加内存释放逻辑 ---
+        function hidePlayerModal() {
+            const mediaElement = playerContainer.querySelector('video, audio');
+            // 检查是否存在src且是blob URL，如果是则释放
+            if (mediaElement && mediaElement.src.startsWith('blob:')) {
+                URL.revokeObjectURL(mediaElement.src);
+            }
+            playerContainer.innerHTML = ''; // 清空内容以停止播放
+            playerModal.classList.remove('flex');
+            playerModal.classList.add('hidden');
+        }
+
+        playerModalCloseBtn.addEventListener('click', hidePlayerModal);
+
+        // --- 数据获取与渲染 ---
+
+        // 通用数据请求函数 (用于JSON)
+        async function fetchData(url, options = {}) {
+            const token = localStorage.getItem('user_id');
+            const headers = { 'Content-Type': 'application/json', ...options.headers };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) {
+                showModal('登录已过期，请重新登录。');
+                showScreen('auth-screen');
+                return null;
+            }
+            return response.json();
+        }
+
+        // 获取主文件夹
+        async function fetchMainFolders() {
+            mainFoldersList.innerHTML = `<li class="p-2 text-center text-gray-500"><div class="loader mx-auto"></div></li>`;
+            const data = await fetchData('/get_main_folders');
+            if (data && data.success) {
+                mainFoldersList.innerHTML = '';
+                data.folders.forEach(folder => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<button data-id="${folder.id}" class="main-folder-item flex items-center w-full p-3 rounded-lg hover:bg-gray-200">
+                        <svg class="h-5 w-5 text-gray-500 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                        <span class="text-sm font-medium truncate">${folder.name}</span></button>`;
+                    mainFoldersList.appendChild(li);
+                });
+            } else {
+                mainFoldersList.innerHTML = `<li class="p-2 text-red-500">加载失败</li>`;
+            }
+        }
+
+        // 获取子文件夹
+        async function fetchSubFolders(parentId) {
+            subFoldersList.innerHTML = `<li class="p-2 text-center text-gray-500"><div class="loader mx-auto"></div></li>`;
+            const data = await fetchData(`/get_sub_folders/${parentId}`);
+            if (data && data.success) {
+                subFoldersList.innerHTML = '';
+                data.folders.forEach(folder => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<button data-id="${folder.id}" class="sub-folder-item flex items-center w-full p-3 rounded-lg hover:bg-gray-200">
+                        <svg class="h-5 w-5 text-gray-500 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                        <span class="text-sm font-medium truncate">${folder.name}</span></button>`;
+                    subFoldersList.appendChild(li);
+                });
+            } else {
+                subFoldersList.innerHTML = `<li class="p-2 text-red-500">加载失败</li>`;
+            }
+        }
+
+        // 获取书签
+        async function fetchBookmarks(folderId) {
+            bookmarksContainer.innerHTML = `<div class="w-full text-center py-8"><div class="loader mx-auto"></div></div>`;
+            const data = await fetchData(`/get_bookmarks/${folderId}`);
+            if (data && data.success) {
+                bookmarksContainer.innerHTML = '';
+                if (data.bookmarks.length === 0) {
+                    bookmarksContainer.innerHTML = `<div class="w-full text-center text-gray-500 mt-8">该文件夹下没有内容</div>`;
+                }
+                data.bookmarks.forEach(bookmark => {
+                    const cardWrapper = document.createElement('div');
+                    cardWrapper.innerHTML = `
+                        <div class="bookmark-card bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden cursor-pointer h-full flex flex-col"
+                             data-link="${bookmark.link}" data-title="${bookmark.title}" ${bookmark.filepath ? `data-filepath="${bookmark.filepath}"` : ''}>
+                             <img src="${bookmark.cover || 'https://placehold.co/400x200/e2e8f0/64748b?text=No+Cover'}" alt="Cover" class="w-full h-32 object-cover pointer-events-none">
+                             <div class="p-4 flex-grow flex flex-col pointer-events-none">
+                                 <h4 class="text-md font-semibold text-gray-800 truncate">${bookmark.title}</h4>
+                                 <p class="text-xs text-gray-500 mt-1 flex-grow">${bookmark.description || '无描述'}</p>
+                                 <p class="text-xs text-blue-500 mt-2 truncate">${bookmark.link}</p>
+                             </div>
+                        </div>`;
+                    bookmarksContainer.appendChild(cardWrapper);
+                });
+            } else {
+                bookmarksContainer.innerHTML = `<div class="w-full text-center text-red-500 mt-8">加载失败</div>`;
+            }
+        }
+
+        // --- 事件委托与处理 ---
+        document.addEventListener('click', (e) => {
+            const mainFolder = e.target.closest('.main-folder-item');
+            if (mainFolder) {
+                currentMainFolderId = mainFolder.dataset.id;
+                fetchSubFolders(currentMainFolderId);
+                showSubFoldersView(); // 移动端切换视图
+                document.querySelectorAll('.main-folder-item').forEach(el => el.classList.remove('bg-gray-200'));
+                mainFolder.classList.add('bg-gray-200');
+                return;
+            }
+
+            const subFolder = e.target.closest('.sub-folder-item');
+            if (subFolder) {
+                currentSubFolderId = subFolder.dataset.id;
+                currentFolderName.textContent = subFolder.querySelector('span').textContent;
+                fetchBookmarks(currentSubFolderId);
+                toggleMobileMenu(false); // 移动端选择后关闭菜单
+                document.querySelectorAll('.sub-folder-item').forEach(el => el.classList.remove('bg-gray-200'));
+                subFolder.classList.add('bg-gray-200');
+                return;
+            }
+
+            const bookmarkCard = e.target.closest('.bookmark-card');
+            if (bookmarkCard) {
+                const { filepath, link, title } = bookmarkCard.dataset;
+                if (filepath) {
+                    showPlayerModal(title, link, filepath);
+                } else if (link) {
+                    window.open(link, '_blank');
+                }
+            }
+        });
+
+        // --- 新增功能逻辑 ---
+
+        // 打开/关闭模态框
+        function openModal(modalId) { document.getElementById(modalId).classList.replace('hidden', 'flex'); }
+        function closeModal(modalId) { document.getElementById(modalId).classList.replace('flex', 'hidden'); }
+
+        // 1. 新增子文件夹
+        addFolderBtn.addEventListener('click', () => {
+            if (!currentMainFolderId) {
+                showModal('请先选择一个主文件夹。');
+                return;
+            }
+            addFolderForm.reset();
+            openModal('add-folder-modal');
+        });
+
+        addFolderForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const folderName = document.getElementById('new-folder-name').value;
+            const data = await fetchData('/create_folder', {
+                method: 'POST',
+                body: JSON.stringify({ name: folderName, parent_id: currentMainFolderId, user_id: currentUserId })
+            });
+            if (data && data.success) {
+                closeModal('add-folder-modal');
+                fetchSubFolders(currentMainFolderId); // 刷新列表
+            } else {
+                showModal(data.message || '创建失败');
+            }
+        });
+
+        // 2. 新增书签
+        addBookmarkBtn.addEventListener('click', () => {
+            if (!currentSubFolderId) {
+                showModal('请先选择一个子文件夹。');
+                return;
+            }
+            addBookmarkForm.reset();
+            coverPreview.classList.add('hidden');
+            document.getElementById('add-bookmark-message').textContent = '';
+            openModal('add-bookmark-modal');
+        });
+
+        newBookmarkCoverInput.addEventListener('change', () => {
+            const file = newBookmarkCoverInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    coverPreview.src = e.target.result;
+                    coverPreview.classList.remove('hidden');
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // 通用文件上传函数
+        async function uploadFile(url, file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            // 注意：上传FormData时不要手动设置Content-Type
+            const token = localStorage.getItem('user_id');
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+            return response.json();
+        }
+
+        addBookmarkForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = document.getElementById('add-bookmark-submit-btn');
+            const messageEl = document.getElementById('add-bookmark-message');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<div class="loader !w-5 !h-5 !border-2 mr-2"></div> 处理中...`;
+            messageEl.textContent = '';
+
+            try {
+                // Step 1: 上传封面 (如果存在)
+                let coverId = null;
+                const coverFile = document.getElementById('new-bookmark-cover').files[0];
+                if (coverFile) {
+                    const coverResult = await uploadFile('/upload_cover', coverFile);
+                    if (!coverResult.success) throw new Error(coverResult.message || '封面上传失败');
+                    coverId = coverResult.file_id;
+                }
+
+                // Step 2: 上传文件 (如果存在)
+                let fileId = null;
+                const contentFile = document.getElementById('new-bookmark-file').files[0];
+                if (contentFile) {
+                    const fileResult = await uploadFile('/upload_file', contentFile);
+                    if (!fileResult.success) throw new Error(fileResult.message || '文件上传失败');
+                    fileId = fileResult.file_id;
+                }
+
+                // Step 3: 创建书签记录
+                const bookmarkData = {
+                    title: document.getElementById('new-bookmark-title').value,
+                    description: document.getElementById('new-bookmark-desc').value,
+                    link: document.getElementById('new-bookmark-link').value,
+                    folder_id: currentSubFolderId,
+                    cover: coverId,
+                    file_id: fileId,
+                    user_id: currentUserId,
+                };
+
+                const addResult = await fetchData('/add_bookmark', {
+                    method: 'POST',
+                    body: JSON.stringify(bookmarkData)
+                });
+
+                if (addResult && addResult.success) {
+                    closeModal('add-bookmark-modal');
+                    fetchBookmarks(currentSubFolderId); // 刷新列表
+                } else {
+                    throw new Error(addResult.message || '创建内容失败');
+                }
+
+            } catch (error) {
+                messageEl.textContent = error.message;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '创建';
+            }
+        });
+
+        // --- 其他辅助函数 (登录、视图切换等) ---
+        // 为了简洁，此处省略了与上一版本相同的登录、登出、切换视图等代码
+        // 您可以将上一版本中缺失的函数复制到此处，或者使用下面完整的代码
+        const toggleAuthBtn = document.getElementById('toggle-auth');
+        const authTitle = document.getElementById('auth-title');
+        const authButton = document.getElementById('auth-button');
+        const authMessage = document.getElementById('auth-message');
+        const logoutBtn = document.getElementById('logout-btn');
+        const gridViewBtn = document.getElementById('grid-view-btn');
+        const listViewBtn = document.getElementById('list-view-btn');
+        let isLoginMode = true;
+
+        function showModal(message) {
+            document.getElementById('modal-message').textContent = message;
+            openModal('message-modal');
+        }
+        document.getElementById('modal-close-btn').addEventListener('click', () => closeModal('message-modal'));
+
+        toggleAuthBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            isLoginMode = !isLoginMode;
+            authTitle.textContent = isLoginMode ? '登录' : '注册';
+            authButton.textContent = isLoginMode ? '登录' : '注册';
+            toggleAuthBtn.textContent = isLoginMode ? '没有账户？去注册' : '已有账户？去登录';
+            authMessage.textContent = '';
+        });
+
+        function showScreen(screenId) {
+            if (screenId === 'auth-screen') {
+                authScreen.style.display = 'block';
+                appScreen.classList.add('hidden');
+            } else {
+                authScreen.style.display = 'none';
+                appScreen.classList.remove('hidden');
+            }
+        }
+
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const url = isLoginMode ? '/login' : '/register';
+            authButton.innerHTML = `<div class="loader mx-auto"></div>`;
+            authButton.disabled = true;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const result = await response.json();
+                authMessage.textContent = '';
+                if (result.success) {
+                    currentUserId = result.user_id;
+                    localStorage.setItem('user_id', currentUserId);
+                    showScreen('app-screen');
+                    fetchMainFolders();
+                } else {
+                    authMessage.textContent = result.message || '操作失败';
+                    authMessage.classList.add('text-red-500');
+                }
+            } catch (error) {
+                authMessage.textContent = '网络错误，请稍后再试。';
+                authMessage.classList.add('text-red-500');
+            } finally {
+                authButton.textContent = isLoginMode ? '登录' : '注册';
+                authButton.disabled = false;
+            }
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('user_id');
+            currentUserId = null;
+            showScreen('auth-screen');
+        });
+
+        gridViewBtn.addEventListener('click', () => {
+            bookmarksContainer.classList.replace('flex-col', 'grid');
+            bookmarksContainer.classList.add('sm:grid-cols-2', 'lg:grid-cols-3');
+        });
+        listViewBtn.addEventListener('click', () => {
+            bookmarksContainer.classList.replace('grid', 'flex-col');
+             bookmarksContainer.classList.remove('sm:grid-cols-2', 'lg:grid-cols-3');
+        });
+
+        // 启动应用
+        init();
+    </script>
+</body>
+</html>

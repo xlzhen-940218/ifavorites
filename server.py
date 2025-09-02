@@ -459,7 +459,7 @@ def craw_url():
     url = data.get('link')
     folder_id = data.get('folder_id')
 
-    result = subprocess.run(f"yt-dlp.exe -j {url}", shell=True, capture_output=True, text=True)
+    result = subprocess.run(f"yt-dlp -j {url}", shell=True, capture_output=True, text=True)
     if result.returncode != 0:
         return jsonify({"success": False, "message": result.stderr}), 500
     else:
@@ -495,7 +495,7 @@ def craw_url():
         filename = f"{file_id}.mp4"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(filename))
 
-        result = subprocess.run(f"yt-dlp.exe {url} -o {filepath}", shell=True, capture_output=True, text=True)
+        result = subprocess.run(f"yt-dlp {url} -o {filepath}", shell=True, capture_output=True, text=True)
         if result.returncode != 0:
             return jsonify({"success": False, "message": result.stderr}), 500
 

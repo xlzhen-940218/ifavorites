@@ -1,6 +1,11 @@
+import json
 import os
 import sqlite3
+import subprocess
 import uuid
+from os import system
+
+import requests
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from werkzeug.utils import secure_filename
 
@@ -441,6 +446,100 @@ def home():
 def complete():
     return render_template('complete.html')
 
+@app.route('/craw_url', methods=['POST'])
+def craw_url():
+    # url = "https://www.youtube.com/watch?v=S5nsDT5oU90"
+    # user_id = '570a8b34-f292-4f8d-bc5d-a91f01dcc5de'
+    # folder_id = '079d134f-c01f-4a96-aabd-ad43ccd6925d'
+    user_id = get_current_user_id()
+    if not user_id:
+        return jsonify({"success": False, "message": "未授權"}), 401
+
+    data = request.json
+    url = data.get('link')
+    folder_id = data.get('folder_id')
+
+    result = subprocess.run(f"yt-dlp.exe -j {url}", shell=True, capture_output=True, text=True)
+    if result.returncode != 0:
+        return jsonify({"success": False, "message": result.stderr}), 500
+    else:
+        data = json.loads(result.stdout)
+        # jsonify({"success": True, "result": {"thumbnail": data.thumbnail,"link": data.webpage_url,"title": data.title,"description": data.description}})
+        cover_file_id = str(uuid.uuid4())
+        # 保留原始文件擴展名
+        file_ext = os.path.splitext(data['thumbnail'])[1]
+        filename = f"{cover_file_id}{file_ext}"
+        filepath = os.path.join(app.config['UPLOAD_COVER'], secure_filename(filename))
+
+        response = requests.get(data['thumbnail'])
+        # 保存图片到本地
+        with open(filepath, 'wb') as f:  # 以二进制写入文件保存
+            f.write(response.content)
+
+
+        # 儲存文件資訊到資料庫
+        try:
+            with sqlite3.connect(DB_NAME) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO covers (id, original_filename, filepath) VALUES (?, ?, ?)",
+                    (cover_file_id, filename, filepath)
+                )
+                conn.commit()
+        except Exception as e:
+            return jsonify({"success": False, "message": f"資料庫寫入失敗: {str(e)}"}), 500
+
+        file_id = str(uuid.uuid4())
+        # 保留原始文件擴展名
+
+        filename = f"{file_id}.mp4"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(filename))
+
+        result = subprocess.run(f"yt-dlp.exe {url} -o {filepath}", shell=True, capture_output=True, text=True)
+        if result.returncode != 0:
+            return jsonify({"success": False, "message": result.stderr}), 500
+
+        # 儲存文件資訊到資料庫
+        try:
+            with sqlite3.connect(DB_NAME) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO files (id, original_filename, filepath) VALUES (?, ?, ?)",
+                    (file_id, filename, filepath)
+                )
+                conn.commit()
+        except Exception as e:
+            return jsonify({"success": False, "message": f"資料庫寫入失敗: {str(e)}"}), 500
+
+        try:
+            with sqlite3.connect(DB_NAME) as conn:
+                cursor = conn.cursor()
+
+                # 检查链接是否已存在
+                existing_bookmark_id = check_duplicate_bookmark(url)
+                if existing_bookmark_id:
+                    # 链接已存在，返回现有ID并绑定
+                    bookmark_id = existing_bookmark_id
+                else:
+                    # 链接不存在，创建新的收藏
+                    bookmark_id = str(uuid.uuid4())
+                    cursor.execute(
+                        "INSERT INTO bookmarks (id, title, description, link, cover, file_id) VALUES (?, ?, ?, ?, ?, ?)",
+                        (bookmark_id, data['title'], data['description'], data['webpage_url'], cover_file_id, file_id))
+
+                # 函数7: 绑定用户、文件夹和收藏
+                cursor.execute(
+                    "INSERT OR IGNORE INTO user_folder_bookmarks (user_id, folder_id, bookmark_id) VALUES (?, ?, ?)",
+                    (user_id, folder_id, bookmark_id))
+                conn.commit()
+
+                return jsonify({"success": True, "bookmark_id": bookmark_id})
+
+        except Exception as e:
+            return jsonify({"success": False, "message": str(e)}), 500
+
+
 if __name__ == '__main__':
+    # craw_url()
     init_db()
     app.run(host='0.0.0.0',debug=True)

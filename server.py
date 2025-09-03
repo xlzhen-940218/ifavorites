@@ -183,6 +183,21 @@ def get_main_folders_api():
             cursor = conn.cursor()
             cursor.execute("SELECT id, name FROM main_folders")
             main_folders = [{"id": row[0], "name": row[1]} for row in cursor.fetchall()]
+            if len(main_folders) == 0:
+                main_types = ["视频", "音频", "图片", "文档", "压缩文件", "其他"]
+
+                # 检查是否已存在
+                cursor.execute("SELECT COUNT(*) FROM main_folders")
+                if cursor.fetchone()[0] > 0:
+                    return jsonify({"success": True, "message": "主文件夹已存在，无需重复创建"})
+
+                # 不存在则写入
+                for name in main_types:
+                    main_folder_id = str(uuid.uuid4())
+                    cursor.execute("INSERT INTO main_folders (id, name) VALUES (?, ?)", (main_folder_id, name))
+                conn.commit()
+                cursor.execute("SELECT id, name FROM main_folders")
+                main_folders = [{"id": row[0], "name": row[1]} for row in cursor.fetchall()]
             return jsonify({"success": True, "folders": main_folders})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
@@ -447,11 +462,11 @@ def create_main_folders():
 
 @app.route('/')
 def home():
-    return render_template('index.html')
-
-@app.route('/complete')
-def complete():
     return render_template('complete.html')
+
+@app.route('/index')
+def complete():
+    return render_template('index.html')
 
 @app.route('/craw_url', methods=['POST'])
 def craw_url():

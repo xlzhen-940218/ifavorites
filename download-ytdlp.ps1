@@ -20,8 +20,7 @@ $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";"
 if (Test-Path "yt-dlp") {
     Write-Host "yt-dlp 目录已存在，更新代码..."
     cd yt-dlp
-    git fetch origin
-    git reset --hard origin/master
+    git pull
 } else {
     # 克隆仓库
     Write-Host "克隆 yt-dlp 仓库..."

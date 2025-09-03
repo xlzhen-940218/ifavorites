@@ -21,4 +21,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "IFavorites"
 include(":app")
+include(":mvvm")
  

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+        <import type="android.view.View" />
+
+        <variable
+            name="subfolderFragment"
+            type="com.xlzhen.ifavorites.viewmodel.SubFolderFragmentViewModel" />
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <androidx.constraintlayout.widget.Group
+            android:id="@+id/group"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="@{subfolderFragment.subFolder?View.GONE:View.VISIBLE}"
+            app:constraint_referenced_ids="sub_folder_tab_layout,view_pager, add_folder_button" />
+
+        <androidx.constraintlayout.widget.Group
+            android:id="@+id/group2"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="@{subfolderFragment.subFolder?View.VISIBLE:View.GONE}"
+            app:constraint_referenced_ids="bookmark_recycler_view,add_url_button" />
+
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/sub_folder_tab_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tabMode="scrollable" />
+
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/view_pager"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/sub_folder_tab_layout" />
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/add_folder_button"
+            android:layout_width="50dp"
+            android:layout_height="30dp"
+            android:layout_margin="5dp"
+            android:background="@drawable/button_selector"
+            android:onClick="@{subfolderFragment::addFolderClick}"
+            android:padding="8dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/add_folder"
+            app:layout_constraintBottom_toBottomOf="@+id/sub_folder_tab_layout"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/bookmark_recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/add_url_button"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_margin="15dp"
+            android:background="@drawable/button_selector"
+            android:onClick="@{subfolderFragment::addBookmarkClick}"
+            android:padding="8dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/url_file_download"
+            app:layout_constraintBottom_toBottomOf="@+id/bookmark_recycler_view"
+            app:layout_constraintRight_toRightOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

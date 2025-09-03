@@ -33,6 +33,10 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+    buildFeatures {
+        viewBinding = true
+        dataBinding = true
+    }
 }
 
 dependencies {
@@ -52,4 +56,9 @@ dependencies {
     implementation(libs.glide)
     annotationProcessor(libs.compiler)
     implementation(libs.logging.interceptor)
+    implementation(project(":mvvm"))
+
+    // 添加 media3 依赖
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
 }

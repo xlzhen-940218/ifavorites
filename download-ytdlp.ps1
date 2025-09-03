@@ -1,7 +1,10 @@
 # 检查并安装 Python 和 Git
-if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+if (-not (Test-Path "Env:\PYTHON_HOME")) {
     Write-Host "Python 未安装，正在安装..."
-    winget install --id Python.Python.3.9 --source winget -h
+    # 移除有问题的 -h 参数，添加静默安装参数
+    winget install --id Python.Python.3.12 --silent --accept-package-agreements --accept-source-agreements
+    # 刷新环境变量
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 }
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {

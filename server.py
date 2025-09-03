@@ -22,7 +22,7 @@ app.config['UPLOAD_COVER'] = UPLOAD_COVER
 if sys.platform == "win32":
     ytdlp_cmd = "yt-dlp.exe"
 else:
-    ytdlp_cmd = "./yt-dlp"
+    ytdlp_cmd = "./yt-dlp-exec"
 
 # 創建文件上傳目錄
 if not os.path.exists(UPLOAD_FOLDER):

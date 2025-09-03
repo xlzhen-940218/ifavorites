@@ -503,7 +503,7 @@ def craw_url():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(filename))
 
         # 构建下载命令
-        cmd = [ytdlp_cmd, url, "-o", filepath]
+        cmd = [ytdlp_cmd, url,"--remux-video", "mp4", "-o", filepath]
 
         # 在 Windows 上可能需要添加 shell=True
         if sys.platform == "win32":

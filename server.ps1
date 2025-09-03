@@ -7,14 +7,11 @@ $ErrorActionPreference = "Stop"
 Write-Host "正在拉取最新代码..."
 git pull
 
-# 检查虚拟环境文件夹是否存在，如果存在则删除
-if (Test-Path ".\venv") {
-    Write-Host "检测到现有虚拟环境，正在删除..."
-    Remove-Item -Recurse -Force ".\venv"
+# 检查虚拟环境文件夹是否存在，如果不存在才创建
+if (-not (Test-Path ".\venv")) {
+    Write-Host "正在创建虚拟环境..."
+    python -m venv venv
 }
-
-Write-Host "正在创建虚拟环境..."
-python -m venv venv
 
 Write-Host "正在激活虚拟环境并安装依赖..."
 # PowerShell 下激活虚拟环境的正确命令

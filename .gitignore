@@ -182,3 +182,5 @@ cython_debug/
 *.db
 /covers
 /files
+/yt-dlp
+yt-dlp.exe

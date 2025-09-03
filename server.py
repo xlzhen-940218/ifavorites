@@ -2,6 +2,7 @@ import json
 import os
 import sqlite3
 import subprocess
+import sys
 import uuid
 from os import system
 
@@ -16,6 +17,12 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 UPLOAD_COVER = 'covers'
 app.config['UPLOAD_COVER'] = UPLOAD_COVER
+
+# 确定 yt-dlp 命令的路径
+if sys.platform == "win32":
+    ytdlp_cmd = "yt-dlp.exe"
+else:
+    ytdlp_cmd = "./yt-dlp"
 
 # 創建文件上傳目錄
 if not os.path.exists(UPLOAD_FOLDER):
@@ -459,7 +466,7 @@ def craw_url():
     url = data.get('link')
     folder_id = data.get('folder_id')
 
-    result = subprocess.run(f"yt-dlp -j {url}", shell=True, capture_output=True, text=True)
+    result = subprocess.run([ytdlp_cmd, "-j", url], capture_output=True, text=True)
     if result.returncode != 0:
         return jsonify({"success": False, "message": result.stderr}), 500
     else:
@@ -495,7 +502,15 @@ def craw_url():
         filename = f"{file_id}.mp4"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(filename))
 
-        result = subprocess.run(f"yt-dlp {url} -o {filepath}", shell=True, capture_output=True, text=True)
+        # 构建下载命令
+        cmd = [ytdlp_cmd, url, "-o", filepath]
+
+        # 在 Windows 上可能需要添加 shell=True
+        if sys.platform == "win32":
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        else:
+            result = subprocess.run(cmd, capture_output=True, text=True)
+
         if result.returncode != 0:
             return jsonify({"success": False, "message": result.stderr}), 500
 

@@ -7,7 +7,7 @@ python -m venv venv
 source venv/bin/activate
 
 echo "pip install flask requests"
-pip install flask requests selenium webdriver-manager
+pip install flask requests
 
 echo "start server"
 python server.py

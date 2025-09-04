@@ -13,8 +13,6 @@ import requests
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from werkzeug.utils import secure_filename, redirect
 
-from get_youtube_list import get_video_urls
-
 app = Flask(__name__)
 DB_NAME = 'bookmarks.db'
 UPLOAD_FOLDER = 'files'
@@ -38,6 +36,8 @@ if not os.path.exists(UPLOAD_COVER):
 
 # 任务状态字典，用于存储任务进度（或者使用数据库）
 task_status = {}
+
+semaphore = threading.Semaphore(3)
 
 
 def init_db():
@@ -495,6 +495,8 @@ def process_video_download(task_id, link, folder_id, user_id):
             cursor.execute(update_query, tuple(params))
             conn.commit()
 
+    semaphore.acquire()
+
     try:
         # 1. 更新任务状态为处理中
         update_task_status('DOWNLOADING', 0)
@@ -559,6 +561,8 @@ def process_video_download(task_id, link, folder_id, user_id):
         update_task_status('FAILED', 0, message=f"命令执行失败: {e.stderr}", result=None)
     except Exception as e:
         update_task_status('FAILED', 0, message=f"任务失败: {str(e)}", result=None)
+
+    semaphore.release()
 
 
 @app.route('/craw_url', methods=['POST'])
@@ -646,9 +650,12 @@ def craw_list():
     if not '&list' in link or not 'www.youtube.com' in link:
         return jsonify({"success": False, "message": "url is not youtube play list!"}), 404
 
-    links = get_video_urls(link)
+    result = subprocess.run([ytdlp_cmd, "-J", link,"--flat-playlist"], capture_output=True, text=True, check=True)
+    video_data = json.loads(result.stdout)
+    print(result.stdout)
+
     task_ids = []
-    for link in links:
+    for entity in video_data['entries']:
         task_id = str(uuid.uuid4())
         try:
             with sqlite3.connect(DB_NAME) as conn:
@@ -662,7 +669,7 @@ def craw_list():
             return jsonify({"success": False, "message": f"任务创建失败: {str(e)}"}), 500
 
         # 在新线程中运行下载任务
-        threading.Thread(target=process_video_download, args=(task_id, link, folder_id, user_id)).start()
+        threading.Thread(target=process_video_download, args=(task_id, entity['url'], folder_id, user_id)).start()
         task_ids.append(task_id)
 
     return jsonify({"success": True, "message": "任务已成功提交", "task_ids": task_ids})

@@ -196,3 +196,16 @@
 * **URL:** `/index`
 * **方法:** `GET`
 * **描述:** 渲染 `index.html` 页面。
+
+### 16. 提交异步爬取任务列表
+
+* **URL:** `/craw_list`
+* **方法:** `POST`
+* **描述:** 提交一个异步任务，用于爬取指定的URL并将其作为收藏项保存。
+* **请求头:** 需要提供有效的 `Authorization: Bearer <user_id>`
+* **请求体 (JSON):**
+    * `link` (string): 要爬取的URL。
+    * `folder_id` (string): 目标文件夹ID。
+* **成功响应 (JSON):**
+    * `success` (boolean): `true`
+    * `task_ids` (array[string]): 新创建的任务IDs。

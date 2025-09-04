@@ -359,29 +359,38 @@
         const data = await res.json();
         // displayResponse('craw-url-response', data);
         if(data.success){
-            // 2. 启动轮询以获取进度
-            const taskId = data.task_id;
-            const progressInterval = setInterval(async () => {
-                        const progressRes = await fetch(`/get_progress/${taskId}`, {
-                            method: 'GET',
-                            headers: { 'Authorization': `Bearer ${currentUser}` }
-                        });
-                        const progressData = await progressRes.json();
+            let task_ids = [];
+            if(data.task_ids){
+                task_ids = data.task_ids;
+            }else{
+                task_ids.push(data.task_id);
+            }
+            for(var i=0;i<task_ids.length;i++){
+                // 2. 启动轮询以获取进度
+                const taskId = task_ids[i];
+                const progressInterval = setInterval(async () => {
+                            const progressRes = await fetch(`/get_progress/${taskId}`, {
+                                method: 'GET',
+                                headers: { 'Authorization': `Bearer ${currentUser}` }
+                            });
+                            const progressData = await progressRes.json();
 
-                        if (progressData.success) {
-                            const { status, progress, message } = progressData;
+                            if (progressData.success) {
+                                const { status, progress, message } = progressData;
 
-                            // 3. 任务完成或失败时停止轮询
-                            if (status === 'COMPLETED' || status === 'FAILED') {
+                                // 3. 任务完成或失败时停止轮询
+                                if (status === 'COMPLETED' || status === 'FAILED') {
+                                    clearInterval(progressInterval);
+                                }
+                                displayResponse('craw-url-response', progressData);
+
+                            } else {
+                                // 进度获取失败
                                 clearInterval(progressInterval);
+                                document.getElementById('craw-url-response').textContent = `获取进度失败：${progressData.message}`;
                             }
-                            displayResponse('craw-url-response', progressData);
-                        } else {
-                            // 进度获取失败
-                            clearInterval(progressInterval);
-                            document.getElementById('craw-url-response').textContent = `获取进度失败：${progressData.message}`;
-                        }
-            }, 2000); // 每2秒轮询一次
+                }, 2000); // 每2秒轮询一次
+            }
         }
     });
 

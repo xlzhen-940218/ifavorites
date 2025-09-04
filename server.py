@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import sqlite3
@@ -10,7 +11,9 @@ from os import system
 
 import requests
 from flask import Flask, request, jsonify, render_template, send_from_directory
-from werkzeug.utils import secure_filename
+from werkzeug.utils import secure_filename, redirect
+
+from get_youtube_list import get_video_urls
 
 app = Flask(__name__)
 DB_NAME = 'bookmarks.db'
@@ -574,6 +577,9 @@ def craw_url():
     if not link or not folder_id:
         return jsonify({"success": False, "message": "链接和文件夹ID是必填项"}), 400
 
+    if '&list' in link and 'www.youtube.com' in link:
+        return redirect('craw_list', code=307)
+
     task_id = str(uuid.uuid4())
     try:
         with sqlite3.connect(DB_NAME) as conn:
@@ -620,6 +626,47 @@ def get_progress(task_id):
                 return jsonify({"success": False, "message": "未找到任务或您无权查看此任务"}), 404
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/craw_list', methods=['POST'])
+def craw_list():
+    """
+        提交下载任务到后台
+        """
+    user_id = get_current_user_id()
+    if not user_id:
+        return jsonify({"success": False, "message": "未授权"}), 401
+
+    data = request.json
+    link = data.get('link')
+    folder_id = data.get('folder_id')
+
+    if not link or not folder_id:
+        return jsonify({"success": False, "message": "链接和文件夹ID是必填项"}), 400
+
+    if not '&list' in link or not 'www.youtube.com' in link:
+        return jsonify({"success": False, "message": "url is not youtube play list!"}), 404
+
+    links = get_video_urls(link)
+    task_ids = []
+    for link in links:
+        task_id = str(uuid.uuid4())
+        try:
+            with sqlite3.connect(DB_NAME) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO tasks (id, link, user_id, folder_id, status, progress) VALUES (?, ?, ?, ?, ?, ?)",
+                    (task_id, link, user_id, folder_id, 'PENDING', 0)
+                )
+                conn.commit()
+        except Exception as e:
+            return jsonify({"success": False, "message": f"任务创建失败: {str(e)}"}), 500
+
+        # 在新线程中运行下载任务
+        threading.Thread(target=process_video_download, args=(task_id, link, folder_id, user_id)).start()
+        task_ids.append(task_id)
+
+    return jsonify({"success": True, "message": "任务已成功提交", "task_ids": task_ids})
+
 
 
 if __name__ == '__main__':

@@ -462,34 +462,47 @@
                 });
 
                 if (result && result.success) {
-                    const taskId = result.task_id;
-                    const progressInterval = setInterval(async () => {
-                                const progressRes = await fetchData(`/get_progress/${taskId}`, {
-                                    method: 'GET'
-                                });
-                                const progressData = await progressRes;
+                    task_ids = [];
+                    if(result.task_ids){
+                        task_ids = result.task_ids;
+                    }else{
+                        task_ids.push(result.task_id);
+                    }
+                    var task_success_count = 0;
+                    for(var i = 0;i<task_ids.length;i++){
+                        const taskId = task_ids[i];
+                        const progressInterval = setInterval(async () => {
+                                    const progressRes = await fetchData(`/get_progress/${taskId}`, {
+                                        method: 'GET'
+                                    });
+                                    const progressData = await progressRes;
 
-                                if (progressData.success) {
-                                    const { status, progress, message } = progressData;
+                                    if (progressData.success) {
+                                        const { status, progress, message } = progressData;
 
-                                    // 3. 任务完成或失败时停止轮询
-                                    if (status === 'COMPLETED' || status === 'FAILED') {
-                                      clearInterval(progressInterval);
-                                      submitBtn.disabled = false;
-                                      submitBtn.innerHTML = '抓取';
-                                      closeModal('crawl-url-modal');
-                                      fetchBookmarks(currentSubFolderId);
-
+                                        // 3. 任务完成或失败时停止轮询
+                                        if (status === 'COMPLETED' || status === 'FAILED') {
+                                          if(task_success_count == task_ids.length){
+                                              clearInterval(progressInterval);
+                                              submitBtn.disabled = false;
+                                              submitBtn.innerHTML = '抓取';
+                                              closeModal('crawl-url-modal');
+                                              fetchBookmarks(currentSubFolderId);
+                                          }
+                                          task_success_count++;
+                                        }
+                                        messageEl.textContent = message;
+                                    } else {
+                                        task_success_count++;
+                                        // 进度获取失败
+                                        clearInterval(progressInterval);
+                                        messageEl.textContent = `获取进度失败：${progressData.message}`;
                                     }
-                                    messageEl.textContent = message;
-                                } else {
-                                    // 进度获取失败
-                                    clearInterval(progressInterval);
-                                    messageEl.textContent = `获取进度失败：${progressData.message}`;
-                                }
-                    }, 2000); // 每2秒轮询一次
+                        }, 2000); // 每2秒轮询一次
+                    }
                 } else {
-                  throw new Error(result.message || '抓取链接失败');
+                  submitBtn.disabled = false;
+                  submitBtn.innerHTML = '抓取';
                 }
           } catch (error) {
             messageEl.textContent = error.message;

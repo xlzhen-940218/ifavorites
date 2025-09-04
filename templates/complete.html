@@ -522,8 +522,9 @@
                                     submitBtn.disabled = false;
                                     submitBtn.innerHTML = '抓取';
                                     closeModal('crawl-url-modal');
-                                    fetchBookmarks(currentSubFolderId);
                                 }
+
+                                fetchBookmarks(currentSubFolderId);
                             }
                             messageEl.textContent = message;
                         } else {

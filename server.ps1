@@ -21,7 +21,7 @@ Write-Host "正在激活虚拟环境并安装依赖..."
 python -m pip install --upgrade pip setuptools
 
 # 安装所需的 Python 包
-pip install flask requests
+pip install flask requests selenium webdriver-manager
 
 Write-Host "正在启动服务器..."
 python server.py

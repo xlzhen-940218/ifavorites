@@ -248,12 +248,10 @@ def process_video_download(task_id, link, folder_id, user_id):
                 # 2. 使用 yt-dlp 获取视频元数据 (标题, 描述, 封面URL等)
                 update_task_status('DOWNLOADING', 10, '正在获取视频元数据...')
                 result = subprocess.run(
-                    [YTDLP_CMD, "--dump-json", link],
+                    [YTDLP_CMD, "--dump-json", "--cookies", "cookie.txt", link],
                     capture_output=True, text=True, check=True, encoding='utf-8'
                 )
                 video_data = json.loads(result.stdout)
-
-
 
                 # 3. 下载封面图片
                 update_task_status('DOWNLOADING', 20, '正在下载封面...')
@@ -281,7 +279,7 @@ def process_video_download(task_id, link, folder_id, user_id):
                 video_file_id = str(uuid.uuid4())
                 # 使用 yt-dlp 的输出模板确保文件名唯一且安全
                 video_filepath_template = os.path.join(app.config['UPLOAD_FOLDER'], f"{video_file_id}.%(ext)s")
-                cmd = [YTDLP_CMD, video_data.get('webpage_url'), "--remux-video", "mp4", "-o", video_filepath_template]
+                cmd = [YTDLP_CMD, video_data.get('webpage_url'), "--remux-video", "mp4", "--cookies", "cookie.txt", "-o", video_filepath_template]
                 subprocess.run(cmd, check=True, capture_output=True)
 
                 # 下载完成后，确定实际的文件路径（因为扩展名是动态的）
@@ -357,10 +355,12 @@ def complete():
     """备用首页"""
     return render_template('index.html')
 
+
 @app.route('/css/complete.css')
 def complete_css():
     """首页样式"""
     return render_template('css/complete.css')
+
 
 @app.route('/js/complete.js')
 def complete_js():
@@ -640,7 +640,7 @@ def craw_url(user_id):
 
     # 检查是否为YouTube播放列表
     result = subprocess.run(
-        [YTDLP_CMD, "--flat-playlist", "--dump-single-json", link],
+        [YTDLP_CMD, "--flat-playlist", "--dump-single-json", "--cookies", "cookie.txt", link],
         capture_output=True, text=True, check=True, encoding='utf-8'
     )
     video_data = json.loads(result.stdout)
@@ -659,7 +659,7 @@ def craw_url(user_id):
         try:
             # 使用 yt-dlp 获取播放列表中所有视频的URL
             result = subprocess.run(
-                [YTDLP_CMD, "-J", "--flat-playlist", link],
+                [YTDLP_CMD, "-J", "--flat-playlist", "--cookies", "cookie.txt", link],
                 capture_output=True, text=True, check=True, encoding='utf-8'
             )
             playlist_data = json.loads(result.stdout)

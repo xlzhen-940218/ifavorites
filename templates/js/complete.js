@@ -182,6 +182,9 @@ async function get_progress(taskIds) {
         currentSubFolderIdGlobal = currentSubFolderId;
     }
     var task_success_count = 0;
+    if(taskIds.length === 0){
+        return;
+    }
     var taskId = taskIds[task_success_count];
     const progressInterval = setInterval(async () => {
         const progressRes = await fetchData(`/get_progress/${taskId}`, {
@@ -208,18 +211,27 @@ async function get_progress(taskIds) {
                 taskId = taskIds[task_success_count + 1];//下次查询第二个任务
             } else if (taskId === taskIds[task_success_count + 1] && task_success_count < taskIds.length - 2) {
                 taskId = taskIds[task_success_count + 2];//再下次查询第三个任务
-            } else {
+            } else if (taskId === taskIds[task_success_count + 2] && task_success_count < taskIds.length - 3) {
+                taskId = taskIds[task_success_count + 3];//再下次查询第三个任务
+            } else if (taskId === taskIds[task_success_count + 3] && task_success_count < taskIds.length - 4) {
+                taskId = taskIds[task_success_count + 4];//再下次查询第三个任务
+            } else if (taskId === taskIds[task_success_count + 4] && task_success_count < taskIds.length - 5) {
+                taskId = taskIds[task_success_count + 5];//再下次查询第三个任务
+            }else {
                 taskId = taskIds[task_success_count];//最后查询第一个任务。直到有完成的任务。记录++
             }
             document.getElementById('download-message').innerHTML = message ? message.length > 20 ? message.substring(0, 20) + '...' : message : '';
             document.getElementById('download-progress').innerHTML = `(${task_success_count}/${taskIds.length})`;
         } else {
-            task_success_count++;
-            taskId = taskIds[task_success_count];
-            if (task_success_count == taskIds.length) {
+            if (task_success_count >= taskIds.length) {
                 clearInterval(progressInterval);
                 fetchBookmarks(currentSubFolderId);
+            }else{
+                task_success_count++;
+                taskId = taskIds[task_success_count];
             }
+            
+            
         }
     }, 5000); // 每5秒轮询一次
 }
@@ -231,7 +243,7 @@ async function recoveryTasks(currentSubFolderId) {
             folder_id: currentSubFolderId
         })
     });
-    if (result && result.success && result.task_ids) {
+    if (result && result.success && result.task_ids.length > 0) {
         document.getElementById('download-status-panel').style.visibility = 'visible';
         get_progress(result.task_ids);
     }
@@ -269,6 +281,8 @@ crawlUrlForm.addEventListener('submit', async (e) => {
             submitBtn.disabled = false;
             submitBtn.innerHTML = '抓取';
             closeModal('crawl-url-modal');
+            document.getElementById('download-status-panel').style.visibility = 'visible';
+
             get_progress(result.task_ids ? result.task_ids : [result.task_id]);
         } else {
             submitBtn.disabled = false;

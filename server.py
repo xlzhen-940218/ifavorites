@@ -14,7 +14,7 @@ from functools import wraps
 from time import sleep
 
 import requests
-from flask import Flask, request, jsonify, render_template, send_from_directory, g
+from flask import Flask, request, jsonify, render_template, send_from_directory, g, Response
 from werkzeug.utils import secure_filename
 
 # --------------------------------------------------------------------------- #
@@ -339,9 +339,48 @@ def serve_covers(filename):
 
 @app.route('/files/<filename>')
 def serve_files(filename):
-    """提供已下载文件（如视频）的访问路径。"""
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    """手动实现对文件的断点续传支持。"""
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
+    # 检查文件是否存在
+    if not os.path.exists(file_path):
+        return "File not found", 404
+
+    # 获取 Range 头
+    range_header = request.headers.get('Range', None)
+
+    # 如果没有 Range 头，则返回整个文件
+    if not range_header:
+        with open(file_path, 'rb') as f:
+            return Response(f.read(), mimetype='application/octet-stream')
+
+    # 解析 Range 头
+    try:
+        size = os.path.getsize(file_path)
+        # 解析 "bytes=start-end"
+        range_value = range_header.replace('bytes=', '')
+        start, end = range_value.split('-')
+        start = int(start) if start else 0
+        end = int(end) if end else size - 1
+    except ValueError:
+        return 'Invalid Range', 400
+
+    # 检查请求的范围是否有效
+    if start >= size or end >= size or start > end:
+        return '', 416 # 416 Range Not Satisfiable
+
+    length = end - start + 1
+
+    with open(file_path, 'rb') as f:
+        f.seek(start)
+        data = f.read(length)
+
+    # 构建 206 响应
+    resp = Response(data, mimetype='application/octet-stream', status=206)
+    resp.headers.add('Content-Range', f'bytes {start}-{end}/{size}')
+    resp.headers.add('Accept-Ranges', 'bytes')
+
+    return resp
 
 # --- 页面路由 ---
 @app.route('/')

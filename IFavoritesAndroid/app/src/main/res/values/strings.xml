@@ -3,4 +3,5 @@
     <string name="creator">创作</string>
     <string name="ifavorite">我的收藏夹</string>
     <string name="loading">加载中，请稍候...</string>
+    <string name="downloading">%s (%d/%d)</string>
 </resources>

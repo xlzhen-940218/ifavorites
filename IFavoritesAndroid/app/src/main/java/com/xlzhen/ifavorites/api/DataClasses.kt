@@ -23,4 +23,18 @@ data class AddBookmarkRequest(val title: String, val description: String, val fo
 data class AddBookmarkResponse(val success: Boolean, val bookmark_id: String?, val message: String?)
 
 data class AddBookmarkUrlRequest(val folder_id: String, val link: String)
-data class AddBookmarkUrlResponse(val success: Boolean, val bookmark_id: String?, val message: String?)
+data class AddBookmarkUrlResponse(val success: Boolean, val task_id: String?, val task_ids:List<String>? = emptyList())
+
+data class RecoveryTasksUrlRequest(val folder_id: String)
+data class RecoveryTasksUrlResponse(val success: Boolean, val task_ids:List<String>? = emptyList())
+
+data class Progress(val success: Boolean,
+                    val status: String,
+                    val progress: Int,
+                    val message: String)
+data class GetProgressResponse(
+    val success: Boolean,
+    val status: String,
+    val progress: Int,
+    val message: String
+)

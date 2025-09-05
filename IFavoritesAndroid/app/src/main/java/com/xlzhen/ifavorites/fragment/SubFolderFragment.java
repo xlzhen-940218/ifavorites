@@ -1,12 +1,10 @@
 package com.xlzhen.ifavorites.fragment;
 
-import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Patterns;
 import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
@@ -17,14 +15,15 @@ import androidx.appcompat.widget.AppCompatEditText;
 
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.xlzhen.ifavorites.BR;
-import com.xlzhen.ifavorites.MainActivity;
 import com.xlzhen.ifavorites.adapter.ViewPagerAdapter;
 import com.xlzhen.ifavorites.api.AddBookmarkUrlService;
 import com.xlzhen.ifavorites.api.Bookmark;
 import com.xlzhen.ifavorites.api.BookmarkService;
 import com.xlzhen.ifavorites.api.CreateSubFolderService;
 import com.xlzhen.ifavorites.api.Folder;
-import com.xlzhen.ifavorites.api.MainFolderService;
+import com.xlzhen.ifavorites.api.GetProgressService;
+import com.xlzhen.ifavorites.api.Progress;
+import com.xlzhen.ifavorites.api.RecoveryTasksUrlService;
 import com.xlzhen.ifavorites.api.SubFolderService;
 import com.xlzhen.ifavorites.databinding.FragmentSubFolderBinding;
 import com.xlzhen.ifavorites.dialog.LoadingDialog;
@@ -34,12 +33,14 @@ import com.xlzhen.mvvm.fragment.BaseFragment;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, SubFolderFragmentViewModel> {
     private String currentFolderId;
-    private final String userId = "64879753-6da1-45b4-950d-563e6edcbabf";
+    private final String userId = "9f51807c-b0db-4d34-b807-c979b199cedc";
     private ViewPagerAdapter viewPagerAdapter;
     private LoadingDialog loadingDialog;
+
     @Override
     protected void pageLoaded() {
 
@@ -62,7 +63,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
 
     private void getBookmarks(String folderId) {
         // 调用封装好的 Kotlin 静态方法
-        CompletableFuture<List<Bookmark>> future = BookmarkService.loadBookmarkAsync("Bearer 64879753-6da1-45b4-950d-563e6edcbabf", folderId);
+        CompletableFuture<List<Bookmark>> future = BookmarkService.loadBookmarkAsync("Bearer 9f51807c-b0db-4d34-b807-c979b199cedc", folderId);
 
         future.thenAccept(bookmarks -> {
             // 在 CompletableFuture 的默认线程池中执行
@@ -86,7 +87,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
 
     private void getSubFolders(String folderId) {
         // 调用封装好的 Kotlin 静态方法
-        CompletableFuture<List<Folder>> future = SubFolderService.loadSubFoldersAsync("Bearer 64879753-6da1-45b4-950d-563e6edcbabf", folderId);
+        CompletableFuture<List<Folder>> future = SubFolderService.loadSubFoldersAsync("Bearer 9f51807c-b0db-4d34-b807-c979b199cedc", folderId);
 
         future.thenAccept(subFolders -> {
             // 在 CompletableFuture 的默认线程池中执行
@@ -136,6 +137,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
                 return;
             if (subFolder) {
                 getBookmarks(currentFolderId);
+                recoveryTaskServer();
             } else {
 
                 getSubFolders(currentFolderId);
@@ -168,7 +170,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
 
     private void createSubFolder(String subName) {
         // 调用封装好的 Kotlin 静态方法
-        CompletableFuture<Boolean> future = CreateSubFolderService.createSubFoldersAsync("Bearer 64879753-6da1-45b4-950d-563e6edcbabf", currentFolderId, subName, userId);
+        CompletableFuture<Boolean> future = CreateSubFolderService.createSubFoldersAsync("Bearer 9f51807c-b0db-4d34-b807-c979b199cedc", currentFolderId, subName, userId);
 
         future.thenAccept(success -> {
             // 在 CompletableFuture 的默认线程池中执行
@@ -188,23 +190,84 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
         });
     }
 
+    public void getProgressStatus(List<String> taskIds, AtomicInteger atomicInteger) {
+        CompletableFuture<Progress> future = GetProgressService.getProgressAsync("Bearer 9f51807c-b0db-4d34-b807-c979b199cedc", taskIds.get(atomicInteger.get()));
+        future.thenAccept(progress -> {
+            // 在 CompletableFuture 的默认线程池中执行
+            // 切换到主线程进行 UI 更新
+            new Handler(Looper.getMainLooper()).post(() -> {
+                model.progressMessage.postValue(progress.getMessage());
+                if ("COMPLETED".equals(progress.getStatus()) || "FAILED".equals(progress.getStatus())) {
+                    atomicInteger.addAndGet(1);
+                    model.successCount.postValue(atomicInteger.get());
+                    model.totalCount.postValue(taskIds.size());
+                    getBookmarks(currentFolderId);
+                }
+                binding.subFolderTabLayout.postDelayed(()->{
+                    getProgressStatus(taskIds, atomicInteger);
+                },3000);
+            });
+        }).exceptionally(e -> {
+            // 在 CompletableFuture 的默认线程池中处理异常
+            // 切换到主线程显示错误信息
+            new Handler(Looper.getMainLooper()).post(() -> {
+                Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            });
+            return null;
+        });
+    }
+
+    public void recoveryTaskServer(){
+        // 调用封装好的 Kotlin 静态方法
+        CompletableFuture<List<String>> future = RecoveryTasksUrlService.recoveryTasksUrlAsync("Bearer 9f51807c-b0db-4d34-b807-c979b199cedc", currentFolderId);
+
+        future.thenAccept(taskIds -> {
+            // 在 CompletableFuture 的默认线程池中执行
+            // 切换到主线程进行 UI 更新
+            new Handler(Looper.getMainLooper()).post(() -> {
+                if (!taskIds.isEmpty()) {
+                    //在屏幕左下方放一个textview记录正在进行的任务和已完成的任务
+                    model.downloading.postValue(true);
+                    model.successCount.postValue(0);
+                    model.totalCount.postValue(taskIds.size());
+                    AtomicInteger atomicInteger = new AtomicInteger(0);
+                    getProgressStatus(taskIds, atomicInteger);
+                }
+            });
+        }).exceptionally(e -> {
+            // 在 CompletableFuture 的默认线程池中处理异常
+            // 切换到主线程显示错误信息
+            new Handler(Looper.getMainLooper()).post(() -> {
+                Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            });
+            return null;
+        });
+    }
+
     public void addBookmarkUrlServer(String url) {
-        if(loadingDialog == null){
+        if (loadingDialog == null) {
             loadingDialog = new LoadingDialog(requireActivity());
         }
-        if(!loadingDialog.isShowing()){
+        if (!loadingDialog.isShowing()) {
             loadingDialog.show();
         }
         // 调用封装好的 Kotlin 静态方法
-        CompletableFuture<Boolean> future = AddBookmarkUrlService.addBookmarkUrlAsync("Bearer 64879753-6da1-45b4-950d-563e6edcbabf", currentFolderId, url);
+        CompletableFuture<List<String>> future = AddBookmarkUrlService.addBookmarkUrlAsync("Bearer 9f51807c-b0db-4d34-b807-c979b199cedc", currentFolderId, url);
 
-        future.thenAccept(success -> {
+        future.thenAccept(taskIds -> {
             // 在 CompletableFuture 的默认线程池中执行
             // 切换到主线程进行 UI 更新
             new Handler(Looper.getMainLooper()).post(() -> {
                 loadingDialog.dismiss();
-                if (success) {
-                    getBookmarks(currentFolderId);
+                if (!taskIds.isEmpty()) {
+                    //getBookmarks(currentFolderId);
+                    //在屏幕左下方放一个textview记录正在进行的任务和已完成的任务
+                    model.downloading.postValue(true);
+                    model.successCount.postValue(0);
+                    model.totalCount.postValue(taskIds.size());
+                    AtomicInteger atomicInteger = new AtomicInteger(0);
+
+                    getProgressStatus(taskIds, atomicInteger);
                 }
             });
         }).exceptionally(e -> {

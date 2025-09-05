@@ -35,7 +35,7 @@ public class MainActivity extends BaseActivity<ActivityMainBinding, MainActivity
             return;
         }
         // 调用封装好的 Kotlin 静态方法
-        CompletableFuture<List<Folder>> future = MainFolderService.loadMainFoldersAsync("Bearer 64879753-6da1-45b4-950d-563e6edcbabf");
+        CompletableFuture<List<Folder>> future = MainFolderService.loadMainFoldersAsync("Bearer 9f51807c-b0db-4d34-b807-c979b199cedc");
 
         future.thenAccept(mainFolders -> {
             // 在 CompletableFuture 的默认线程池中执行

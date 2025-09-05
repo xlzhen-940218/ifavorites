@@ -18,12 +18,17 @@ import java.util.List;
 import java.util.Objects;
 
 import kotlin.Unit;
-import kotlin.jvm.functions.Function1;
 
 public class SubFolderFragmentViewModel extends BaseFragmentModel<SubFolderFragment> {
     public GridLayoutManager gridLayoutManager;
     public BookmarkAdapter bookmarkAdapter;
     public MutableLiveData<Boolean> subFolder = new MutableLiveData<>(false);
+    public MutableLiveData<Boolean> downloading =new MutableLiveData<>(false);
+    public MutableLiveData<String> progressMessage = new MutableLiveData<>("");
+    public MutableLiveData<Integer> successCount =new MutableLiveData<>(0);
+    public MutableLiveData<Integer> totalCount =new MutableLiveData<>(0);
+
+
 
     public SubFolderFragmentViewModel(SubFolderFragment fragment) {
         super(fragment);

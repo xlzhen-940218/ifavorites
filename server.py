@@ -1,4 +1,8 @@
-import asyncio
+# -*- coding: utf-8 -*-
+
+# --------------------------------------------------------------------------- #
+# 导入标准库和第三方库
+# --------------------------------------------------------------------------- #
 import json
 import os
 import sqlite3
@@ -6,47 +10,75 @@ import subprocess
 import sys
 import uuid
 import threading
-import time
-from os import system
+from functools import wraps
 
 import requests
-from flask import Flask, request, jsonify, render_template, send_from_directory
-from werkzeug.utils import secure_filename, redirect
+from flask import Flask, request, jsonify, render_template, send_from_directory, g
+from werkzeug.utils import secure_filename
 
+# --------------------------------------------------------------------------- #
+# 全局配置和初始化
+# --------------------------------------------------------------------------- #
 app = Flask(__name__)
-DB_NAME = 'bookmarks.db'
-UPLOAD_FOLDER = 'files'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-UPLOAD_COVER = 'covers'
+# --- 数据库配置 ---
+DB_NAME = 'bookmarks.db'
+
+# --- 文件上传路径配置 ---
+UPLOAD_FOLDER = 'files'  # 普通文件（如视频）的存储目录
+UPLOAD_COVER = 'covers'  # 封面图片的存储目录
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['UPLOAD_COVER'] = UPLOAD_COVER
 
-# 确定 yt-dlp 命令的路径
+# --- 外部工具路径配置 ---
+# 根据操作系统平台确定 yt-dlp 可执行文件的路径
 if sys.platform == "win32":
-    ytdlp_cmd = "yt-dlp.exe"
+    YTDLP_CMD = "yt-dlp.exe"
 else:
-    ytdlp_cmd = "./yt-dlp-exec"
+    YTDLP_CMD = "./yt-dlp-exec"  # 假设在 Linux/macOS 下，可执行文件位于同级目录
 
-# 創建文件上傳目錄
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+# --- 并发控制 ---
+# 创建一个线程信号量，限制同时进行的下载任务最多为3个，防止服务器过载
+MAX_CONCURRENT_DOWNLOADS = 3
+download_semaphore = threading.Semaphore(MAX_CONCURRENT_DOWNLOADS)
 
-if not os.path.exists(UPLOAD_COVER):
-    os.makedirs(UPLOAD_COVER)
+# --- 确保上传目录存在 ---
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(UPLOAD_COVER, exist_ok=True)
 
-# 任务状态字典，用于存储任务进度（或者使用数据库）
-task_status = {}
 
-semaphore = threading.Semaphore(3)
+# --------------------------------------------------------------------------- #
+# 数据库辅助函数
+# --------------------------------------------------------------------------- #
+def get_db_connection():
+    """
+    获取数据库连接。
+    使用 Flask 的 g 对象，确保在同一次请求中复用同一个数据库连接。
+    """
+    if 'db' not in g:
+        g.db = sqlite3.connect(DB_NAME)
+        g.db.row_factory = sqlite3.Row  # 设置 row_factory 以便将查询结果作为字典访问
+    return g.db
+
+
+@app.teardown_appcontext
+def close_db_connection(exception):
+    """
+    在应用上下文结束时（通常是请求结束后）自动关闭数据库连接。
+    """
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
 
 
 def init_db():
     """
-    初始化数据库和表，新增tasks表
+    初始化数据库：创建所有需要的表结构。
+    这个函数应该在应用首次启动前运行。
     """
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
-        # 用户表 (user)
+        # 用户表: 存储用户信息
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
@@ -54,23 +86,23 @@ def init_db():
                 password TEXT NOT NULL
             )
         ''')
-        # 文件表 (files) - 新增
+        # 文件表: 存储上传的视频等文件信息
         cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS files (
-                        id TEXT PRIMARY KEY,
-                        original_filename TEXT NOT NULL,
-                        filepath TEXT NOT NULL
-                    )
-                ''')
-        # 封面表 (covers) - 新增
+            CREATE TABLE IF NOT EXISTS files (
+                id TEXT PRIMARY KEY,
+                original_filename TEXT NOT NULL,
+                filepath TEXT NOT NULL
+            )
+        ''')
+        # 封面表: 存储上传或下载的封面图片信息
         cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS covers (
-                        id TEXT PRIMARY KEY,
-                        original_filename TEXT NOT NULL,
-                        filepath TEXT NOT NULL
-                    )
-                ''')
-        # 文件夹表 (folder)，可以有父级ID
+            CREATE TABLE IF NOT EXISTS covers (
+                id TEXT PRIMARY KEY,
+                original_filename TEXT NOT NULL,
+                filepath TEXT NOT NULL
+            )
+        ''')
+        # 文件夹表: 存储用户创建的子文件夹，通过 parent_id 形成层级结构
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS folders (
                 id TEXT PRIMARY KEY,
@@ -79,25 +111,25 @@ def init_db():
                 FOREIGN KEY (parent_id) REFERENCES folders(id)
             )
         ''')
-        # 收藏表 (bookmark)
+        # 收藏表: 存储核心的书签信息
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS bookmarks (
                 id TEXT PRIMARY KEY,
                 title TEXT NOT NULL,
                 description TEXT,
                 link TEXT UNIQUE NOT NULL,
-                cover TEXT,
-                file_id TEXT
+                cover TEXT, -- 封面ID，外键关联 covers 表
+                file_id TEXT  -- 文件ID，外键关联 files 表
             )
         ''')
-        # 主文件夹表 (main_folders)
+        # 主文件夹表: 存储预设的顶级分类
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS main_folders (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE
             )
         ''')
-        # 用户-文件夹绑定表 (user_folder)
+        # 用户-文件夹关系表: 关联用户和他们有权访问的文件夹
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS user_folders (
                 user_id TEXT,
@@ -107,7 +139,7 @@ def init_db():
                 FOREIGN KEY (folder_id) REFERENCES folders(id)
             )
         ''')
-        # 用户-文件夹-收藏绑定表 (user_folder_bookmark)
+        # 用户-文件夹-收藏关系表: 将一个收藏条目放入特定用户的特定文件夹中
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS user_folder_bookmarks (
                 user_id TEXT,
@@ -119,17 +151,17 @@ def init_db():
                 FOREIGN KEY (bookmark_id) REFERENCES bookmarks(id)
             )
         ''')
-        # 任务表 (tasks) - 新增
+        # 任务表: 用于跟踪后台下载任务的状态
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS tasks (
                 id TEXT PRIMARY KEY,
                 link TEXT NOT NULL,
                 user_id TEXT NOT NULL,
                 folder_id TEXT NOT NULL,
-                status TEXT NOT NULL,
+                status TEXT NOT NULL, -- PENDING, DOWNLOADING, COMPLETED, FAILED
                 progress INTEGER,
                 message TEXT,
-                result TEXT,
+                result TEXT, -- 成功时可存储 bookmark_id
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -139,209 +171,203 @@ def init_db():
 
 def check_duplicate_bookmark(link):
     """
-    检查收藏链接是否已存在
+    通过链接检查数据库中是否已存在相同的书签。
+    :param link: 要检查的书签链接。
+    :return: 如果存在，返回书签ID；否则返回 None。
     """
-    with sqlite3.connect(DB_NAME) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM bookmarks WHERE link = ?", (link,))
-        result = cursor.fetchone()
-        return result[0] if result else None
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM bookmarks WHERE link = ?", (link,))
+    result = cursor.fetchone()
+    return result[0] if result else None
 
 
-def get_current_user_id():
+# --------------------------------------------------------------------------- #
+# 认证与授权辅助函数/装饰器
+# --------------------------------------------------------------------------- #
+def login_required(f):
     """
-    從請求頭中獲取並驗證用戶ID
+    一个装饰器，用于保护需要登录才能访问的路由。
+    它会检查请求头中的 'Authorization: Bearer <user_id>'。
+    如果验证成功，会将 user_id 作为参数传递给被装饰的函数。
+    如果失败，则返回 401 未授权错误。
     """
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return None
-    user_id = auth_header.split(' ')[1]
 
-    with sqlite3.connect(DB_NAME) as conn:
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({"success": False, "message": "未提供授权令牌"}), 401
+
+        user_id = auth_header.split(' ')[1]
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
-        if cursor.fetchone():
-            return user_id
-    return None
+        if not cursor.fetchone():
+            return jsonify({"success": False, "message": "无效的用户ID"}), 401
+
+        # 将 user_id 传递给路由函数
+        return f(user_id=user_id, *args, **kwargs)
+
+    return decorated_function
 
 
+# --------------------------------------------------------------------------- #
+# 核心业务逻辑 (后台任务)
+# --------------------------------------------------------------------------- #
+def process_video_download(task_id, link, folder_id, user_id):
+    """
+    在后台线程中处理视频下载的完整流程。
+    包括：获取元数据、下载封面、下载视频、保存信息到数据库，并实时更新任务状态。
+    """
+    # 使用 with 语句确保信号量在任何情况下都会被释放
+    with download_semaphore:
+        try:
+            # --- 内部辅助函数：用于更新数据库中的任务状态 ---
+            def update_task_status(status, progress=None, message=None, result=None):
+                print(f"[任务更新] ID: {task_id}, 状态: {status}, 进度: {progress}, 消息: {message}")
+                with sqlite3.connect(DB_NAME) as conn:
+                    cursor = conn.cursor()
+                    if progress is not None:
+                        cursor.execute(
+                            "UPDATE tasks SET status = ?, progress = ?, message = ?, result = ? WHERE id = ?",
+                            (status, progress, message, result, task_id)
+                        )
+                    else:
+                        cursor.execute(
+                            "UPDATE tasks SET status = ?, message = ?, result = ? WHERE id = ?",
+                            (status, message, result, task_id)
+                        )
+                    conn.commit()
+
+            # 1. 更新任务状态为“下载中”
+            update_task_status('DOWNLOADING', 0, '任务已开始...')
+
+            # 2. 使用 yt-dlp 获取视频元数据 (标题, 描述, 封面URL等)
+            update_task_status('DOWNLOADING', 10, '正在获取视频元数据...')
+            result = subprocess.run(
+                [YTDLP_CMD, "--dump-json", link],
+                capture_output=True, text=True, check=True, encoding='utf-8'
+            )
+            video_data = json.loads(result.stdout)
+
+            # 3. 下载封面图片
+            update_task_status('DOWNLOADING', 20, '正在下载封面...')
+            cover_url = video_data.get('thumbnail')
+            cover_file_id = None
+            if cover_url:
+                cover_file_id = str(uuid.uuid4())
+                file_ext = os.path.splitext(cover_url.split('?')[0])[-1] or '.jpg'  # 避免URL参数影响后缀判断
+                filename = f"{cover_file_id}{file_ext}"
+                filepath = os.path.join(app.config['UPLOAD_COVER'], secure_filename(filename))
+                response = requests.get(cover_url)
+                response.raise_for_status()
+                with open(filepath, 'wb') as f:
+                    f.write(response.content)
+
+                # 将封面信息存入数据库
+                with sqlite3.connect(DB_NAME) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("INSERT INTO covers (id, original_filename, filepath) VALUES (?, ?, ?)",
+                                   (cover_file_id, filename, filepath))
+                    conn.commit()
+
+            # 4. 下载视频文件
+            update_task_status('DOWNLOADING', 50, '正在下载视频...')
+            video_file_id = str(uuid.uuid4())
+            # 使用 yt-dlp 的输出模板确保文件名唯一且安全
+            video_filepath_template = os.path.join(app.config['UPLOAD_FOLDER'], f"{video_file_id}.%(ext)s")
+            cmd = [YTDLP_CMD, link, "--remux-video", "mp4", "-o", video_filepath_template]
+            subprocess.run(cmd, check=True, capture_output=True, text=True, encoding='utf-8')
+
+            # 下载完成后，确定实际的文件路径（因为扩展名是动态的）
+            final_video_filename = f"{video_file_id}.mp4"
+            final_video_filepath = os.path.join(app.config['UPLOAD_FOLDER'], final_video_filename)
+
+            # 将视频文件信息存入数据库
+            with sqlite3.connect(DB_NAME) as conn:
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO files (id, original_filename, filepath) VALUES (?, ?, ?)",
+                               (video_file_id, video_data.get('title', 'untitled'), final_video_filepath))
+                conn.commit()
+
+            # 5. 将下载好的视频信息作为书签存入数据库
+            update_task_status('DOWNLOADING', 90, '正在保存书签信息...')
+            with sqlite3.connect(DB_NAME) as conn:
+                cursor = conn.cursor()
+                # 检查此链接是否已作为书签存在
+                existing_bookmark_id = check_duplicate_bookmark(link)
+                if existing_bookmark_id:
+                    bookmark_id = existing_bookmark_id
+                else:
+                    bookmark_id = str(uuid.uuid4())
+                    cursor.execute(
+                        "INSERT INTO bookmarks (id, title, description, link, cover, file_id) VALUES (?, ?, ?, ?, ?, ?)",
+                        (bookmark_id, video_data.get('title'), video_data.get('description'),
+                         video_data.get('webpage_url'),
+                         cover_file_id, video_file_id))
+
+                # 绑定书签到用户的指定文件夹
+                cursor.execute(
+                    "INSERT OR IGNORE INTO user_folder_bookmarks (user_id, folder_id, bookmark_id) VALUES (?, ?, ?)",
+                    (user_id, folder_id, bookmark_id))
+                conn.commit()
+
+            # 6. 任务完成
+            update_task_status('COMPLETED', 100, '任务成功完成', result=bookmark_id)
+
+        except subprocess.CalledProcessError as e:
+            error_message = f"命令执行失败: {e.stderr}"
+            update_task_status('FAILED', 0, message=error_message)
+        except Exception as e:
+            error_message = f"发生未知错误: {str(e)}"
+            update_task_status('FAILED', 0, message=error_message)
+
+
+# --------------------------------------------------------------------------- #
+# Flask 路由 (API Endpoints)
+# --------------------------------------------------------------------------- #
+
+# --- 静态文件服务 ---
 @app.route('/covers/<filename>')
 def serve_covers(filename):
-    """
-    根据文件名返回 covers 目录下的文件。
-    """
-    if not os.path.isfile(os.path.join(UPLOAD_COVER, filename)):
-        return jsonify({"success": False, "message": "file not found!"}), 404
-
-    try:
-        return send_from_directory(UPLOAD_COVER, filename)
-    except FileNotFoundError:
-        return jsonify({"success": False, "message": "file not found!"}), 404
+    """提供封面图片的访问路径。"""
+    return send_from_directory(app.config['UPLOAD_COVER'], filename)
 
 
 @app.route('/files/<filename>')
 def serve_files(filename):
-    """
-    根据文件名返回 files 目录下的文件。
-    """
-    if not os.path.isfile(os.path.join(UPLOAD_FOLDER, filename)):
-        return jsonify({"success": False, "message": "file not found!"}), 404
-
-    try:
-        return send_from_directory(UPLOAD_FOLDER, filename)
-    except FileNotFoundError:
-        return jsonify({"success": False, "message": "file not found!"}), 404
+    """提供已下载文件（如视频）的访问路径。"""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
-# --- 新增的获取数据接口 ---
-@app.route('/get_main_folders', methods=['GET'])
-def get_main_folders_api():
-    user_id = get_current_user_id()
-    if not user_id:
-        return jsonify({"success": False, "message": "未授权"}), 401
-
-    try:
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, name FROM main_folders")
-            main_folders = [{"id": row[0], "name": row[1]} for row in cursor.fetchall()]
-            if len(main_folders) == 0:
-                main_types = ["视频", "音频", "图片", "文档", "压缩文件", "其他"]
-                cursor.execute("SELECT COUNT(*) FROM main_folders")
-                if cursor.fetchone()[0] > 0:
-                    return jsonify({"success": True, "message": "主文件夹已存在，无需重复创建"})
-                for name in main_types:
-                    main_folder_id = str(uuid.uuid4())
-                    cursor.execute("INSERT INTO main_folders (id, name) VALUES (?, ?)", (main_folder_id, name))
-                conn.commit()
-                cursor.execute("SELECT id, name FROM main_folders")
-                main_folders = [{"id": row[0], "name": row[1]} for row in cursor.fetchall()]
-            return jsonify({"success": True, "folders": main_folders})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+# --- 页面路由 ---
+@app.route('/')
+def home():
+    """首页"""
+    return render_template('complete.html')
 
 
-@app.route('/get_sub_folders/<parent_id>', methods=['GET'])
-def get_sub_folders_api(parent_id):
-    user_id = get_current_user_id()
-    if not user_id:
-        return jsonify({"success": False, "message": "未授权"}), 401
+@app.route('/index')
+def complete():
+    """备用首页"""
+    return render_template('index.html')
 
-    try:
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT f.id, f.name
-                FROM folders f
-                JOIN user_folders uf ON f.id = uf.folder_id
-                WHERE uf.user_id = ? AND f.parent_id = ?
-            """, (user_id, parent_id))
-            sub_folders = [{"id": row[0], "name": row[1]} for row in cursor.fetchall()]
-            return jsonify({"success": True, "folders": sub_folders})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+@app.route('/css/complete.css')
+def complete_css():
+    """首页样式"""
+    return render_template('css/complete.css')
+
+@app.route('/js/complete.js')
+def complete_js():
+    """首页脚本"""
+    return render_template('js/complete.js')
 
 
-@app.route('/get_bookmarks/<folder_id>', methods=['GET'])
-def get_bookmarks_api(folder_id):
-    user_id = get_current_user_id()
-    if not user_id:
-        return jsonify({"success": False, "message": "未授权"}), 401
-
-    try:
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT b.title, b.description, b.link, c.filepath, f.filepath, b.id
-                FROM bookmarks b
-                JOIN user_folder_bookmarks ufb ON b.id = ufb.bookmark_id
-                LEFT JOIN files f ON b.file_id = f.id
-                LEFT JOIN covers c ON b.cover = c.id
-                WHERE ufb.user_id = ? AND ufb.folder_id = ?
-            """, (user_id, folder_id))
-            bookmarks = [{
-                "title": row[0],
-                "description": row[1],
-                "link": row[2],
-                "cover": row[3],
-                "filepath": row[4],
-                "id": row[5]
-            } for row in cursor.fetchall()]
-            return jsonify({"success": True, "bookmarks": bookmarks})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
-
-
-# 函數8: 上傳文件 (真實邏輯)
-@app.route('/upload_file', methods=['POST'])
-def upload_file():
-    user_id = get_current_user_id()
-    if not user_id:
-        return jsonify({"success": False, "message": "未授權"}), 401
-
-    if 'file' not in request.files:
-        return jsonify({"success": False, "message": "沒有文件部分"}), 400
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"success": False, "message": "沒有選擇文件"}), 400
-    if file:
-        original_filename = file.filename
-        file_id = str(uuid.uuid4())
-        file_ext = os.path.splitext(original_filename)[1]
-        filename = f"{file_id}{file_ext}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(filename))
-        file.save(filepath)
-
-        try:
-            with sqlite3.connect(DB_NAME) as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO files (id, original_filename, filepath) VALUES (?, ?, ?)",
-                    (file_id, original_filename, filepath)
-                )
-                conn.commit()
-                return jsonify({"success": True, "file_id": file_id, "file_path": filepath})
-        except Exception as e:
-            return jsonify({"success": False, "message": f"資料庫寫入失敗: {str(e)}"}), 500
-    return None
-
-
-@app.route('/upload_cover', methods=['POST'])
-def upload_cover():
-    user_id = get_current_user_id()
-    if not user_id:
-        return jsonify({"success": False, "message": "未授權"}), 401
-
-    if 'file' not in request.files:
-        return jsonify({"success": False, "message": "沒有文件部分"}), 400
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"success": False, "message": "沒有選擇文件"}), 400
-    if file:
-        original_filename = file.filename
-        file_id = str(uuid.uuid4())
-        file_ext = os.path.splitext(original_filename)[1]
-        filename = f"{file_id}{file_ext}"
-        filepath = os.path.join(app.config['UPLOAD_COVER'], secure_filename(filename))
-        file.save(filepath)
-
-        try:
-            with sqlite3.connect(DB_NAME) as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO covers (id, original_filename, filepath) VALUES (?, ?, ?)",
-                    (file_id, original_filename, filepath)
-                )
-                conn.commit()
-                return jsonify({"success": True, "file_id": file_id, "file_path": filepath})
-        except Exception as e:
-            return jsonify({"success": False, "message": f"資料庫寫入失敗: {str(e)}"}), 500
-    return None
-
-
-# 函数4: 用户注册
+# --- 用户认证 API ---
 @app.route('/register', methods=['POST'])
 def register():
+    """用户注册接口"""
     data = request.json
     email = data.get('email')
     password = data.get('password')
@@ -350,240 +376,235 @@ def register():
 
     try:
         user_id = str(uuid.uuid4())
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO users (id, email, password) VALUES (?, ?, ?)", (user_id, email, password))
-            conn.commit()
-            return jsonify({"success": True, "user_id": user_id})
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO users (id, email, password) VALUES (?, ?, ?)", (user_id, email, password))
+        conn.commit()
+        return jsonify({"success": True, "user_id": user_id}), 201
     except sqlite3.IntegrityError:
         return jsonify({"success": False, "message": "该邮箱已被注册"}), 409
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
 
-# 函数5: 用户登录
 @app.route('/login', methods=['POST'])
 def login():
+    """用户登录接口"""
     data = request.json
     email = data.get('email')
     password = data.get('password')
     if not email or not password:
         return jsonify({"success": False, "message": "邮箱和密码是必填项"}), 400
 
-    with sqlite3.connect(DB_NAME) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM users WHERE email = ? AND password = ?", (email, password))
-        result = cursor.fetchone()
-        if result:
-            user_id = result[0]
-            return jsonify({"success": True, "user_id": user_id})
-        else:
-            return jsonify({"success": False, "message": "邮箱或密码错误"}), 401
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE email = ? AND password = ?", (email, password))
+    user = cursor.fetchone()
+    if user:
+        return jsonify({"success": True, "user_id": user['id']})
+    else:
+        return jsonify({"success": False, "message": "邮箱或密码错误"}), 401
 
 
-# 函数2: 创建二级菜单（文件夹）
-@app.route('/create_folder', methods=['POST'])
-def create_folder():
-    user_id = get_current_user_id()
-    if not user_id:
-        return jsonify({"success": False, "message": "未授權"}), 401
-
-    data = request.json
-    name = data.get('name')
-    parent_id = data.get('parent_id')
-    user_id = data.get('user_id')
-    if not name or not user_id or not parent_id:
-        return jsonify({"success": False, "message": "文件夹名称和用户ID,父级ID是必填项"}), 400
-
+# --- 数据获取 API (受保护) ---
+@app.route('/get_main_folders', methods=['GET'])
+@login_required
+def get_main_folders_api(user_id):
+    """获取所有主文件夹（顶级分类）。如果数据库为空，则自动创建默认分类。"""
     try:
-        folder_id = str(uuid.uuid4())
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO folders (id, name, parent_id) VALUES (?, ?, ?)", (folder_id, name, parent_id))
-            # 函数6: 绑定用户和文件夹
-            cursor.execute("INSERT OR IGNORE INTO user_folders (user_id, folder_id) VALUES (?, ?)",
-                           (user_id, folder_id))
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name FROM main_folders")
+        main_folders = [{"id": row['id'], "name": row['name']} for row in cursor.fetchall()]
+
+        # 如果主文件夹为空，则初始化默认分类
+        if not main_folders:
+            main_types = ["视频", "音频", "图片", "文档", "压缩文件", "其他"]
+            for name in main_types:
+                main_folder_id = str(uuid.uuid4())
+                cursor.execute("INSERT INTO main_folders (id, name) VALUES (?, ?)", (main_folder_id, name))
             conn.commit()
-            return jsonify({"success": True, "folder_id": folder_id})
+            # 重新查询
+            cursor.execute("SELECT id, name FROM main_folders")
+            main_folders = [{"id": row['id'], "name": row['name']} for row in cursor.fetchall()]
+
+        return jsonify({"success": True, "folders": main_folders})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
 
-# 函数1: 写入收藏
-@app.route('/add_bookmark', methods=['POST'])
-def add_bookmark():
-    user_id = get_current_user_id()
-    if not user_id:
-        return jsonify({"success": False, "message": "未授權"}), 401
+@app.route('/get_sub_folders/<parent_id>', methods=['GET'])
+@login_required
+def get_sub_folders_api(user_id, parent_id):
+    """获取指定父文件夹下的所有子文件夹。"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT f.id, f.name FROM folders f
+            JOIN user_folders uf ON f.id = uf.folder_id
+            WHERE uf.user_id = ? AND f.parent_id = ?
+        """, (user_id, parent_id))
+        sub_folders = [{"id": row['id'], "name": row['name']} for row in cursor.fetchall()]
+        return jsonify({"success": True, "folders": sub_folders})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
+
+@app.route('/get_bookmarks/<folder_id>', methods=['GET'])
+@login_required
+def get_bookmarks_api(user_id, folder_id):
+    """获取指定文件夹下的所有书签。"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # 联合查询书签、封面和文件表以获取完整信息
+        cursor.execute("""
+            SELECT b.id, b.title, b.description, b.link, c.filepath as cover_path, f.filepath as file_path
+            FROM bookmarks b
+            JOIN user_folder_bookmarks ufb ON b.id = ufb.bookmark_id
+            LEFT JOIN covers c ON b.cover = c.id
+            LEFT JOIN files f ON b.file_id = f.id
+            WHERE ufb.user_id = ? AND ufb.folder_id = ?
+        """, (user_id, folder_id))
+        bookmarks = [{
+            "id": row['id'],
+            "title": row['title'],
+            "description": row['description'],
+            "link": row['link'],
+            "cover": row['cover_path'],
+            "filepath": row['file_path']
+        } for row in cursor.fetchall()]
+        return jsonify({"success": True, "bookmarks": bookmarks})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+# --- 数据创建/修改 API (受保护) ---
+
+def _handle_upload(user_id, table_name, upload_dir):
+    """
+    处理文件上传的通用辅助函数，用于上传封面和普通文件。
+    :param user_id: 当前操作的用户ID（用于鉴权）。
+    :param table_name: 要插入数据的表名 ('covers' or 'files')。
+    :param upload_dir: 文件要保存的目录。
+    :return: Flask Response 对象。
+    """
+    if 'file' not in request.files:
+        return jsonify({"success": False, "message": "请求中没有文件部分"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"success": False, "message": "没有选择文件"}), 400
+
+    if file:
+        original_filename = secure_filename(file.filename)
+        file_id = str(uuid.uuid4())
+        file_ext = os.path.splitext(original_filename)[1]
+        new_filename = f"{file_id}{file_ext}"
+        filepath = os.path.join(upload_dir, new_filename)
+        file.save(filepath)
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                f"INSERT INTO {table_name} (id, original_filename, filepath) VALUES (?, ?, ?)",
+                (file_id, original_filename, filepath)
+            )
+            conn.commit()
+            return jsonify({"success": True, "file_id": file_id, "file_path": filepath})
+        except Exception as e:
+            # 如果数据库写入失败，最好能删除已保存的文件以避免产生孤立文件
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            return jsonify({"success": False, "message": f"数据库写入失败: {str(e)}"}), 500
+    return jsonify({"success": False, "message": "未知错误"}), 500
+
+
+@app.route('/upload_file', methods=['POST'])
+@login_required
+def upload_file(user_id):
+    """上传普通文件接口。"""
+    return _handle_upload(user_id, 'files', app.config['UPLOAD_FOLDER'])
+
+
+@app.route('/upload_cover', methods=['POST'])
+@login_required
+def upload_cover(user_id):
+    """上传封面图片接口。"""
+    return _handle_upload(user_id, 'covers', app.config['UPLOAD_COVER'])
+
+
+@app.route('/create_folder', methods=['POST'])
+@login_required
+def create_folder(user_id):
+    """创建子文件夹接口。"""
+    data = request.json
+    name = data.get('name')
+    parent_id = data.get('parent_id')  # parent_id 是主文件夹的ID
+    if not name or not parent_id:
+        return jsonify({"success": False, "message": "文件夹名称和父级ID是必填项"}), 400
+
+    try:
+        folder_id = str(uuid.uuid4())
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # 插入新文件夹
+        cursor.execute("INSERT INTO folders (id, name, parent_id) VALUES (?, ?, ?)", (folder_id, name, parent_id))
+        # 绑定文件夹到当前用户
+        cursor.execute("INSERT OR IGNORE INTO user_folders (user_id, folder_id) VALUES (?, ?)", (user_id, folder_id))
+        conn.commit()
+        return jsonify({"success": True, "folder_id": folder_id}), 201
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route('/add_bookmark', methods=['POST'])
+@login_required
+def add_bookmark(user_id):
+    """手动添加书签接口（不涉及自动下载）。"""
     data = request.json
     title = data.get('title')
     description = data.get('description')
     folder_id = data.get('folder_id')
     link = data.get('link')
-    cover = data.get('cover')
-    user_id = data.get('user_id')
-    file_id = data.get('file_id')  # 可选
+    cover_id = data.get('cover')  # 应该是 cover_id
+    file_id = data.get('file_id')
 
-    if not title or not folder_id or not link or not user_id or not description or not cover:
-        return jsonify({"success": False, "message": "标题、描述、文件夹ID、链接和用户ID是必填项"}), 400
+    if not all([title, description, folder_id, link, cover_id]):
+        return jsonify({"success": False, "message": "标题、描述、文件夹ID、链接和封面ID是必填项"}), 400
 
     try:
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            existing_bookmark_id = check_duplicate_bookmark(link)
-            if existing_bookmark_id:
-                bookmark_id = existing_bookmark_id
-            else:
-                bookmark_id = str(uuid.uuid4())
-                cursor.execute(
-                    "INSERT INTO bookmarks (id, title, description, link, cover, file_id) VALUES (?, ?, ?, ?, ?, ?)",
-                    (bookmark_id, title, description, link, cover, file_id))
-
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # 检查链接是否已存在，避免重复
+        existing_bookmark_id = check_duplicate_bookmark(link)
+        if existing_bookmark_id:
+            bookmark_id = existing_bookmark_id
+        else:
+            bookmark_id = str(uuid.uuid4())
             cursor.execute(
-                "INSERT OR IGNORE INTO user_folder_bookmarks (user_id, folder_id, bookmark_id) VALUES (?, ?, ?)",
-                (user_id, folder_id, bookmark_id))
-            conn.commit()
-            return jsonify({"success": True, "bookmark_id": bookmark_id})
-
+                "INSERT INTO bookmarks (id, title, description, link, cover, file_id) VALUES (?, ?, ?, ?, ?, ?)",
+                (bookmark_id, title, description, link, cover_id, file_id)
+            )
+        # 绑定书签到用户的文件夹
+        cursor.execute(
+            "INSERT OR IGNORE INTO user_folder_bookmarks (user_id, folder_id, bookmark_id) VALUES (?, ?, ?)",
+            (user_id, folder_id, bookmark_id)
+        )
+        conn.commit()
+        return jsonify({"success": True, "bookmark_id": bookmark_id}), 201
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
 
-# 函数3: 写入主文件夹
-@app.route('/create_main_folders', methods=['POST'])
-def create_main_folders():
-    main_types = ["视频", "音频", "图片", "文档", "压缩文件", "其他"]
-    try:
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM main_folders")
-            if cursor.fetchone()[0] > 0:
-                return jsonify({"success": True, "message": "主文件夹已存在，无需重复创建"})
-            for name in main_types:
-                main_folder_id = str(uuid.uuid4())
-                cursor.execute("INSERT INTO main_folders (id, name) VALUES (?, ?)", (main_folder_id, name))
-            conn.commit()
-            return jsonify({"success": True, "message": "主文件夹创建成功"})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+# --- 爬虫与后台任务 API (受保护) ---
 
-
-@app.route('/')
-def home():
-    return render_template('complete.html')
-
-
-@app.route('/index')
-def complete():
-    return render_template('index.html')
-
-
-def process_video_download(task_id, link, folder_id, user_id):
+def _create_and_start_download_task(link, user_id, folder_id):
     """
-    后台线程处理视频下载任务
+    创建下载任务记录并启动后台下载线程的辅助函数。
+    :return: task_id 或 None (如果创建失败)
     """
-
-    def update_task_status(status, progress=None, message=None, result=None):
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            update_query = "UPDATE tasks SET status = ?, message = ?, result = ? WHERE id = ?"
-            params = [status, message, result, task_id]
-            if progress is not None:
-                update_query = "UPDATE tasks SET status = ?, progress = ?, message = ?, result = ? WHERE id = ?"
-                params = [status, progress, message, result, task_id]
-            cursor.execute(update_query, tuple(params))
-            conn.commit()
-
-    semaphore.acquire()
-
-    try:
-        # 1. 更新任务状态为处理中
-        update_task_status('DOWNLOADING', 0)
-
-        # 2. 获取视频元数据
-        update_task_status('DOWNLOADING', 10, message='获取视频元数据...')
-        result = subprocess.run([ytdlp_cmd, "--dump-json", link], capture_output=True, text=True, check=True)
-        video_data = json.loads(result.stdout)
-
-        # 3. 下载封面
-        update_task_status('DOWNLOADING', 20, message='下载封面...')
-        cover_file_id = str(uuid.uuid4())
-        file_ext = os.path.splitext(video_data['thumbnail'])[1]
-        filename = f"{cover_file_id}{file_ext}"
-        filepath = os.path.join(app.config['UPLOAD_COVER'], secure_filename(filename))
-        response = requests.get(video_data['thumbnail'])
-        with open(filepath, 'wb') as f:
-            f.write(response.content)
-
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO covers (id, original_filename, filepath) VALUES (?, ?, ?)",
-                           (cover_file_id, filename, filepath))
-            conn.commit()
-
-        # 4. 下载视频
-        update_task_status('DOWNLOADING', 50, message='下载视频...')
-        video_file_id = str(uuid.uuid4())
-        video_filename = f"{video_file_id}.mp4"
-        video_filepath = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(video_filename))
-        cmd = [ytdlp_cmd, link, "--remux-video", "mp4", "-o", video_filepath]
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
-
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO files (id, original_filename, filepath) VALUES (?, ?, ?)",
-                           (video_file_id, video_filename, video_filepath))
-            conn.commit()
-
-        # 5. 添加书签到数据库
-        update_task_status('DOWNLOADING', 90, message='保存书签...')
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            existing_bookmark_id = check_duplicate_bookmark(link)
-            if existing_bookmark_id:
-                bookmark_id = existing_bookmark_id
-            else:
-                bookmark_id = str(uuid.uuid4())
-                cursor.execute(
-                    "INSERT INTO bookmarks (id, title, description, link, cover, file_id) VALUES (?, ?, ?, ?, ?, ?)",
-                    (bookmark_id, video_data['title'], video_data['description'], video_data['webpage_url'],
-                     cover_file_id, video_file_id))
-
-            cursor.execute(
-                "INSERT OR IGNORE INTO user_folder_bookmarks (user_id, folder_id, bookmark_id) VALUES (?, ?, ?)",
-                (user_id, folder_id, bookmark_id))
-            conn.commit()
-
-        # 6. 任务完成
-        update_task_status('COMPLETED', 100, message='下载完成', result=bookmark_id)
-    except subprocess.CalledProcessError as e:
-        update_task_status('FAILED', 0, message=f"命令执行失败: {e.stderr}", result=None)
-    except Exception as e:
-        update_task_status('FAILED', 0, message=f"任务失败: {str(e)}", result=None)
-
-    semaphore.release()
-
-
-@app.route('/craw_url', methods=['POST'])
-def craw_url():
-    """
-    提交下载任务到后台
-    """
-    user_id = get_current_user_id()
-    if not user_id:
-        return jsonify({"success": False, "message": "未授权"}), 401
-
-    data = request.json
-    link = data.get('link')
-    folder_id = data.get('folder_id')
-
-    if not link or not folder_id:
-        return jsonify({"success": False, "message": "链接和文件夹ID是必填项"}), 400
-
-    if '&list' in link and 'www.youtube.com' in link:
-        return redirect('craw_list', code=307)
-
     task_id = str(uuid.uuid4())
     try:
         with sqlite3.connect(DB_NAME) as conn:
@@ -593,89 +614,163 @@ def craw_url():
                 (task_id, link, user_id, folder_id, 'PENDING', 0)
             )
             conn.commit()
-    except Exception as e:
-        return jsonify({"success": False, "message": f"任务创建失败: {str(e)}"}), 500
-
-    # 在新线程中运行下载任务
-    threading.Thread(target=process_video_download, args=(task_id, link, folder_id, user_id)).start()
-
-    return jsonify({"success": True, "message": "任务已成功提交", "task_id": task_id})
+        # 在新线程中运行下载任务
+        threading.Thread(target=process_video_download, args=(task_id, link, folder_id, user_id)).start()
+        return task_id
+    except Exception:
+        return None
 
 
-@app.route('/get_progress/<task_id>', methods=['GET'])
-def get_progress(task_id):
+@app.route('/craw_url', methods=['POST'])
+@login_required
+def craw_url(user_id):
     """
-    根据任务ID获取任务进度
+    提交单个视频URL进行下载。
+    如果URL是YouTube播放列表，则自动提取所有视频并为每个视频创建下载任务。
     """
-    user_id = get_current_user_id()
-    if not user_id:
-        return jsonify({"success": False, "message": "未授权"}), 401
-
-    try:
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT status, progress, message FROM tasks WHERE id = ? AND user_id = ?",
-                           (task_id, user_id))
-            result = cursor.fetchone()
-            if result:
-                status, progress, message = result
-                return jsonify({
-                    "success": True,
-                    "task_id": task_id,
-                    "status": status,
-                    "progress": progress,
-                    "message": message
-                })
-            else:
-                return jsonify({"success": False, "message": "未找到任务或您无权查看此任务"}), 404
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
-
-@app.route('/craw_list', methods=['POST'])
-def craw_list():
-    """
-        提交下载任务到后台
-        """
-    user_id = get_current_user_id()
-    if not user_id:
-        return jsonify({"success": False, "message": "未授权"}), 401
-
     data = request.json
     link = data.get('link')
     folder_id = data.get('folder_id')
-
     if not link or not folder_id:
         return jsonify({"success": False, "message": "链接和文件夹ID是必填项"}), 400
 
-    if not '&list' in link or not 'www.youtube.com' in link:
-        return jsonify({"success": False, "message": "url is not youtube play list!"}), 404
-
-    result = subprocess.run([ytdlp_cmd, "-J", link,"--flat-playlist"], capture_output=True, text=True, check=True)
+    # 检查是否为YouTube播放列表
+    result = subprocess.run(
+        [YTDLP_CMD, "--flat-playlist", "--dump-single-json", link],
+        capture_output=True, text=True, check=True, encoding='utf-8'
+    )
     video_data = json.loads(result.stdout)
-    print(result.stdout)
 
-    task_ids = []
-    for entity in video_data['entries']:
-        task_id = str(uuid.uuid4())
+    is_playlist = video_data['_type'] == 'playlist'
+
+    if not is_playlist:
+        # 处理单个视频
+        task_id = _create_and_start_download_task(link, user_id, folder_id)
+        if task_id:
+            return jsonify({"success": True, "message": "任务已成功提交", "task_id": task_id})
+        else:
+            return jsonify({"success": False, "message": "任务创建失败"}), 500
+    else:
+        # 处理播放列表
         try:
-            with sqlite3.connect(DB_NAME) as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO tasks (id, link, user_id, folder_id, status, progress) VALUES (?, ?, ?, ?, ?, ?)",
-                    (task_id, link, user_id, folder_id, 'PENDING', 0)
-                )
-                conn.commit()
+            # 使用 yt-dlp 获取播放列表中所有视频的URL
+            result = subprocess.run(
+                [YTDLP_CMD, "-J", "--flat-playlist", link],
+                capture_output=True, text=True, check=True, encoding='utf-8'
+            )
+            playlist_data = json.loads(result.stdout)
+
+            task_ids = []
+            for entry in playlist_data.get('entries', []):
+                video_url = entry.get('url')
+                if video_url:
+                    task_id = _create_and_start_download_task(video_url, user_id, folder_id)
+                    if task_id:
+                        task_ids.append(task_id)
+
+            if not task_ids:
+                return jsonify({"success": False, "message": "无法从播放列表提取视频或创建任务失败"}), 400
+
+            return jsonify({"success": True, "message": f"{len(task_ids)}个任务已成功提交", "task_ids": task_ids})
+        except subprocess.CalledProcessError as e:
+            return jsonify({"success": False, "message": f"解析播放列表失败: {e.stderr}"}), 500
         except Exception as e:
-            return jsonify({"success": False, "message": f"任务创建失败: {str(e)}"}), 500
+            return jsonify({"success": False, "message": f"处理播放列表时出错: {str(e)}"}), 500
 
-        # 在新线程中运行下载任务
-        threading.Thread(target=process_video_download, args=(task_id, entity['url'], folder_id, user_id)).start()
-        task_ids.append(task_id)
 
-    return jsonify({"success": True, "message": "任务已成功提交", "task_ids": task_ids})
+@app.route('/get_progress/<task_id>', methods=['GET'])
+@login_required
+def get_progress(user_id, task_id):
+    """根据任务ID获取任务的当前进度和状态。"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT status, progress, message FROM tasks WHERE id = ? AND user_id = ?", (task_id, user_id))
+        task = cursor.fetchone()
+        if task:
+            return jsonify({
+                "success": True,
+                "task_id": task_id,
+                "status": task['status'],
+                "progress": task['progress'],
+                "message": task['message']
+            })
+        else:
+            return jsonify({"success": False, "message": "未找到任务或您无权查看此任务"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
+
+@app.route('/recover_tasks', methods=['POST'])
+@login_required
+def recover_tasks(user_id):
+    """
+    (此接口仅用于查询) 获取指定文件夹下所有未完成的任务ID列表。
+    真正的任务恢复逻辑在应用启动时自动执行。
+    """
+    data = request.json
+    folder_id = data.get('folder_id')
+    if not folder_id:
+        return jsonify({"success": False, "message": "文件夹ID是必填项"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # 查询所有不是 'COMPLETED' 状态的任务
+        cursor.execute(
+            "SELECT id FROM tasks WHERE user_id = ? AND folder_id = ? AND status != ?",
+            (user_id, folder_id, 'COMPLETED')
+        )
+        tasks = cursor.fetchall()
+        recovered_task_ids = [task['id'] for task in tasks]
+        return jsonify({
+            "success": True,
+            "message": f"找到 {len(recovered_task_ids)} 个未完成的任务。",
+            "task_ids": recovered_task_ids
+        })
+    except Exception as e:
+        return jsonify({"success": False, "message": f"查询任务失败: {str(e)}"}), 500
+
+
+# --------------------------------------------------------------------------- #
+# 应用启动逻辑
+# --------------------------------------------------------------------------- #
+def recovery_all_unfinished_tasks():
+    """
+    在应用启动时，查找所有未完成的任务（状态不是 COMPLETED）并重新启动它们。
+    """
+    print("开始检查并恢复未完成的任务...")
+    try:
+        with sqlite3.connect(DB_NAME) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, link, folder_id, user_id FROM tasks WHERE status != ?", ('COMPLETED',))
+            unfinished_tasks = cursor.fetchall()
+
+            if not unfinished_tasks:
+                print("没有需要恢复的任务。")
+                return
+
+            print(f"找到 {len(unfinished_tasks)} 个需要恢复的任务。")
+            for task in unfinished_tasks:
+                task_id, link, folder_id, user_id = task
+                print(f"重新提交任务: {task_id}")
+                # 将任务状态重置为 PENDING
+                cursor.execute("UPDATE tasks SET status = ? WHERE id = ?", ('PENDING', task_id))
+                conn.commit()
+                # 在新线程中重新启动下载
+                threading.Thread(target=process_video_download, args=(task_id, link, folder_id, user_id)).start()
+    except Exception as e:
+        print(f"恢复任务时发生错误: {e}")
 
 
 if __name__ == '__main__':
+    # 1. 确保数据库和表已创建
     init_db()
-    app.run(host='0.0.0.0', debug=True)
+
+    # 2. 在一个单独的后台线程中启动任务恢复程序，避免阻塞Web服务器启动
+    recovery_thread = threading.Thread(target=recovery_all_unfinished_tasks)
+    recovery_thread.daemon = True  # 设置为守护线程，主程序退出时它也会退出
+    recovery_thread.start()
+
+    # 3. 启动 Flask Web 服务器
+    app.run(host='0.0.0.0', port=5000, debug=True)

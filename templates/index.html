@@ -201,6 +201,14 @@
                     <pre id="upload-cover-response" class="response-box hidden"></pre>
                 </div>
             </div>
+            <div class="card">
+                <h2 class="text-lg font-semibold mb-4">10. 恢复任务 (`/recover_tasks`)</h2>
+                 <div class="space-y-4">
+                    <input type="text" id="sub_folder_id" class="input" placeholder="文件夹ID">
+                    <button id="recovery-btn" class="btn btn-primary w-full">恢复任务</button>
+                    <pre id="recovery-response" class="response-box hidden"></pre>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -406,6 +414,55 @@
                             clearInterval(progressInterval);
                        }
                         document.getElementById('craw-url-response').textContent = `获取进度失败：${progressData.message}`;
+                    }
+                }, 3000); // 每3秒轮询一次
+
+            }
+        });
+
+        // 8. Crawl URL
+        document.getElementById('recovery-btn').addEventListener('click', async () => {
+            if (!checkAuth()) return;
+            const folderId = document.getElementById('sub_folder_id').value;
+            const res = await fetch('/recover_tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentUser}` },
+                body: JSON.stringify({folder_id: folderId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                let task_ids = data.task_ids;
+
+                var success_count = 0;
+                // 2. 启动轮询以获取进度
+                const taskId = task_ids[success_count];
+                const progressInterval = setInterval(async () => {
+                    const progressRes = await fetch(`/get_progress/${taskId}`, {
+                        method: 'GET',
+                        headers: { 'Authorization': `Bearer ${currentUser}` }
+                    });
+                    const progressData = await progressRes.json();
+
+                    if (progressData.success) {
+                        const { status, progress, message } = progressData;
+
+                        // 3. 任务完成或失败时停止轮询
+                        if (status === 'COMPLETED' || status === 'FAILED') {
+                            success_count++;
+                            taskId = task_ids[success_count];
+                            if (success_count == task_ids.length) {
+                                clearInterval(progressInterval);
+                            }
+                        }
+                        displayResponse('recovery-response', progressData);
+
+                    } else {
+                        success_count++;
+                        taskId = task_ids[success_count];
+                       if (success_count == task_ids.length) {
+                            clearInterval(progressInterval);
+                       }
+                        document.getElementById('recovery-response').textContent = `获取进度失败：${progressData.message}`;
                     }
                 }, 3000); // 每3秒轮询一次
 

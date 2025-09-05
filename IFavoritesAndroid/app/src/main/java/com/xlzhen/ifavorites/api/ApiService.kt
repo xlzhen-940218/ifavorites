@@ -37,6 +37,15 @@ interface ApiService {
     @POST(value = "craw_url")
     suspend fun addBookmarkUrl(@Header("Authorization") auth: String, @Body body: AddBookmarkUrlRequest): AddBookmarkUrlResponse
 
+    @POST(value = "recover_tasks")
+    suspend fun recoveryTasksUrl(@Header("Authorization") auth: String, @Body body: RecoveryTasksUrlRequest): RecoveryTasksUrlResponse
+
     @GET("get_bookmarks/{folder_id}")
     suspend fun getBookmarks(@Header("Authorization") auth: String, @Path("folder_id") folderId: String): BookmarksResponse
+
+    @GET("get_progress/{task_id}")
+    suspend fun getProgress(
+        @Header("Authorization") auth: String,
+        @Path("task_id") taskId: String
+    ): GetProgressResponse
 }

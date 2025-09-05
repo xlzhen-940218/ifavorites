@@ -31,8 +31,10 @@
 
         <com.google.android.material.tabs.TabLayout
             android:id="@+id/sub_folder_tab_layout"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toLeftOf="@+id/add_folder_button"
             app:layout_constraintTop_toTopOf="parent"
             app:tabMode="scrollable" />
 
@@ -76,5 +78,27 @@
             android:src="@drawable/url_file_download"
             app:layout_constraintBottom_toBottomOf="@+id/bookmark_recycler_view"
             app:layout_constraintRight_toRightOf="parent" />
+        <androidx.cardview.widget.CardView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="20dp"
+            android:layout_margin="10dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="@{subfolderFragment.downloading?View.VISIBLE:View.GONE}"
+            app:cardBackgroundColor="@android:color/holo_blue_light"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="10dp"
+                android:text="@{@string/downloading(subfolderFragment.progressMessage,subfolderFragment.successCount,subfolderFragment.totalCount)}"
+                android:layout_gravity="center"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"/>
+
+        </androidx.cardview.widget.CardView>
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

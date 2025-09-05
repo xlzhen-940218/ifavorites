@@ -1,211 +1,427 @@
-# API 接口文档
+# **书签管理系统 API 文档**
 
-## 认证
+## **概述**
 
-所有需要用户身份验证的接口都需要在请求头中添加 **`Authorization`**。
+本文档提供了书签管理系统后端服务的 API 接口说明。所有 API 请求和响应的主体格式均为 JSON。
 
-**请求头:** `Authorization: Bearer <user_id>`
+### **认证**
 
-其中 `<user_id>` 是用户登录或注册后获取到的唯一用户ID。
+对于需要认证的接口，客户端必须在 HTTP 请求头中包含 `Authorization` 字段。
 
-## 用户接口
+  - **格式**: `Authorization: Bearer <user_id>`
+  - **示例**: `Authorization: Bearer 123e4567-e89b-12d3-a456-426614174000`
 
-### 1. 用户注册
+如果认证失败或未提供令牌，服务器将返回 `401 Unauthorized` 错误。
 
-* **URL:** `/register`
-* **方法:** `POST`
-* **描述:** 新用户注册。
-* **请求体 (JSON):**
-    * `email` (string): 用户邮箱，必须唯一。
-    * `password` (string): 用户密码。
-* **成功响应 (JSON):**
-    * `success` (boolean): `true`
-    * `user_id` (string): 新注册用户的ID。
-* **失败响应 (JSON):**
-    * `success` (boolean): `false`
-    * `message` (string): 错误信息。
+### **通用响应格式**
 
-### 2. 用户登录
+  - **成功响应**:
+    ```json
+    {
+      "success": true,
+      "data": { ... } // 或其他特定字段
+    }
+    ```
+  - **失败响应**:
+    ```json
+    {
+      "success": false,
+      "message": "错误信息描述"
+    }
+    ```
 
-* **URL:** `/login`
-* **方法:** `POST`
-* **描述:** 用户登录。
-* **请求体 (JSON):**
-    * `email` (string): 用户邮箱。
-    * `password` (string): 用户密码。
-* **成功响应 (JSON):**
-    * `success` (boolean): `true`
-    * `user_id` (string): 登录用户的ID。
-* **失败响应 (JSON):**
-    * `success` (boolean): `false`
-    * `message` (string): 错误信息。
+-----
 
-## 文件夹和收藏接口
+## **1. 用户认证 (User Authentication)**
 
-### 3. 获取主文件夹列表
+### **1.1 用户注册**
 
-* **URL:** `/get_main_folders`
-* **方法:** `GET`
-* **描述:** 获取系统预设的主文件夹列表。
-* **请求头:** 需要提供有效的 `Authorization: Bearer <user_id>`
-* **成功响应 (JSON):**
-    * `success` (boolean): `true`
-    * `folders` (array): 主文件夹对象列表。
+  - **Endpoint**: `/register`
+  - **Method**: `POST`
+  - **Description**: 创建一个新用户账户。
+  - **Authentication**: 无需
 
-### 4. 获取子文件夹列表
+**Request Body**:
 
-* **URL:** `/get_sub_folders/<parent_id>`
-* **方法:** `GET`
-* **描述:** 根据父文件夹ID获取子文件夹列表。
-* **URL参数:**
-    * `parent_id` (string): 父文件夹的ID。
-* **请求头:** 需要提供有效的 `Authorization: Bearer <user_id>`
-* **成功响应 (JSON):**
-    * `success` (boolean): `true`
-    * `folders` (array): 子文件夹对象列表。
+```json
+{
+  "email": "user@example.com",
+  "password": "your_secure_password"
+}
+```
 
-### 5. 获取文件夹下的收藏列表
+| 参数       | 类型   | 描述       | 是否必须 |
+| :--------- | :----- | :--------- | :------- |
+| `email`    | String | 用户邮箱   | 是       |
+| `password` | String | 用户密码   | 是       |
 
-* **URL:** `/get_bookmarks/<folder_id>`
-* **方法:** `GET`
-* **描述:** 根据文件夹ID获取所有收藏。
-* **URL参数:**
-    * `folder_id` (string): 文件夹的ID。
-* **请求头:** 需要提供有效的 `Authorization: Bearer <user_id>`
-* **成功响应 (JSON):**
-    * `success` (boolean): `true`
-    * `bookmarks` (array): 收藏对象列表。
+**Success Response (`201 Created`)**:
 
-### 6. 创建子文件夹
+```json
+{
+  "success": true,
+  "user_id": "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6"
+}
+```
 
-* **URL:** `/create_folder`
-* **方法:** `POST`
-* **描述:** 在指定父文件夹下创建新的子文件夹。
-* **请求头:** 需要提供有效的 `Authorization: Bearer <user_id>`
-* **请求体 (JSON):**
-    * `name` (string): 新文件夹的名称。
-    * `parent_id` (string): 父文件夹的ID。
-* **成功响应 (JSON):**
-    * `success` (boolean): `true`
-    * `folder_id` (string): 新创建的文件夹ID。
+**Error Responses**:
 
-### 7. 添加收藏
+  - `400 Bad Request`: 缺少 `email` 或 `password`。
+  - `409 Conflict`: 该邮箱已被注册。
 
-* **URL:** `/add_bookmark`
-* **方法:** `POST`
-* **描述:** 向指定文件夹添加一个新收藏。
-* **请求头:** 需要提供有效的 `Authorization: Bearer <user_id>`
-* **请求体 (JSON):**
-    * `title` (string): 收藏标题。
-    * `description` (string): 收藏描述。
-    * `folder_id` (string): 目标文件夹ID。
-    * `link` (string): 收藏链接。
-    * `cover` (string): 封面ID。
-    * `file_id` (string, 可选): 如果与文件关联，则为文件ID。
-* **成功响应 (JSON):**
-    * `success` (boolean): `true`
-    * `bookmark_id` (string): 新添加的收藏ID。
+-----
 
-## 文件和内容接口
+### **1.2 用户登录**
 
-### 8. 上传文件
+  - **Endpoint**: `/login`
+  - **Method**: `POST`
+  - **Description**: 验证用户凭据并返回用户ID（作为后续请求的令牌）。
+  - **Authentication**: 无需
 
-* **URL:** `/upload_file`
-* **方法:** `POST`
-* **描述:** 上传文件并将其信息保存到数据库。
-* **请求头:** 需要提供有效的 `Authorization: Bearer <user_id>`
-* **请求体 (Form Data):**
-    * `file` (file): 要上传的文件。
-* **成功响应 (JSON):**
-    * `success` (boolean): `true`
-    * `file_id` (string): 上传文件的ID。
-    * `file_path` (string): 上传文件的服务器路径。
+**Request Body**:
 
-### 9. 上传封面
+```json
+{
+  "email": "user@example.com",
+  "password": "your_secure_password"
+}
+```
 
-* **URL:** `/upload_cover`
-* **方法:** `POST`
-* **描述:** 上传封面图片并将其信息保存到数据库。
-* **请求头:** 需要提供有效的 `Authorization: Bearer <user_id>`
-* **请求体 (Form Data):**
-    * `file` (file): 要上传的封面图片。
-* **成功响应 (JSON):**
-    * `success` (boolean): `true`
-    * `file_id` (string): 上传封面的ID。
-    * `file_path` (string): 上传封面的服务器路径。
+**Success Response (`200 OK`)**:
 
-### 10. 获取封面文件
+```json
+{
+  "success": true,
+  "user_id": "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6"
+}
+```
 
-* **URL:** `/covers/<filename>`
-* **方法:** `GET`
-* **描述:** 根据文件名获取存储在服务器上的封面图片文件。
-* **URL参数:**
-    * `filename` (string): 封面图片的文件名。
+**Error Responses**:
 
-### 11. 获取普通文件
+  - `400 Bad Request`: 缺少 `email` 或 `password`。
+  - `401 Unauthorized`: 邮箱或密码错误。
 
-* **URL:** `/files/<filename>`
-* **方法:** `GET`
-* **描述:** 根据文件名获取存储在服务器上的文件。
-* **URL参数:**
-    * `filename` (string): 文件名。
+-----
 
-### 12. 提交异步爬取任务
+## **2. 数据查询 (Data Retrieval)**
 
-* **URL:** `/craw_url`
-* **方法:** `POST`
-* **描述:** 提交一个异步任务，用于爬取指定的URL并将其作为收藏项保存。
-* **请求头:** 需要提供有效的 `Authorization: Bearer <user_id>`
-* **请求体 (JSON):**
-    * `link` (string): 要爬取的URL。
-    * `folder_id` (string): 目标文件夹ID。
-* **成功响应 (JSON):**
-    * `success` (boolean): `true`
-    * `task_id` (string): 新创建的任务ID。
+### **2.1 获取主文件夹**
 
-### 13. 查询任务进度
+  - **Endpoint**: `/get_main_folders`
+  - **Method**: `GET`
+  - **Description**: 获取所有顶级的分类文件夹。如果数据库为空，会自动创建默认分类。
+  - **Authentication**: **需要**
 
-* **URL:** `/get_progress/<task_id>`
-* **方法:** `GET`
-* **描述:** 根据任务ID获取任务的当前状态和进度。
-* **URL参数:**
-    * `task_id` (string): 任务的唯一ID。
-* **请求头:** 需要提供有效的 `Authorization: Bearer <user_id>`
-* **成功响应 (JSON):**
-    * `success` (boolean): `true`
-    * `status` (string): 任务状态，例如: `PENDING`, `IN_PROGRESS`, `COMPLETED`, `FAILED`。
-    * `progress` (integer): 任务进度百分比。
-    * `message` (string): 任务的详细状态信息。
+**Success Response (`200 OK`)**:
 
-## 其他接口
+```json
+{
+  "success": true,
+  "folders": [
+    {
+      "id": "main_folder_id_1",
+      "name": "视频"
+    },
+    {
+      "id": "main_folder_id_2",
+      "name": "音频"
+    }
+  ]
+}
+```
 
-### 14. 初始化主文件夹
+-----
 
-* **URL:** `/create_main_folders`
-* **方法:** `POST`
-* **描述:** 创建预设的主文件夹类型。
-* **成功响应 (JSON):**
-    * `success` (boolean): `true`
-    * `message` (string): 成功或已存在的信息。
+### **2.2 获取子文件夹**
 
-### 15. 首页和索引页
+  - **Endpoint**: `/get_sub_folders/<parent_id>`
+  - **Method**: `GET`
+  - **Description**: 获取指定主文件夹下的所有子文件夹。
+  - **Authentication**: **需要**
 
-* **URL:** `/`
-* **方法:** `GET`
-* **描述:** 渲染 `complete.html` 页面。
-* **URL:** `/index`
-* **方法:** `GET`
-* **描述:** 渲染 `index.html` 页面。
+**URL Parameters**:
+| 参数        | 类型   | 描述             |
+| :---------- | :----- | :--------------- |
+| `parent_id` | String | 主文件夹的 ID    |
 
-### 16. 提交异步爬取任务列表
+**Success Response (`200 OK`)**:
 
-* **URL:** `/craw_list`
-* **方法:** `POST`
-* **描述:** 提交一个异步任务，用于爬取指定的URL并将其作为收藏项保存。
-* **请求头:** 需要提供有效的 `Authorization: Bearer <user_id>`
-* **请求体 (JSON):**
-    * `link` (string): 要爬取的URL。
-    * `folder_id` (string): 目标文件夹ID。
-* **成功响应 (JSON):**
-    * `success` (boolean): `true`
-    * `task_ids` (array[string]): 新创建的任务IDs。
+```json
+{
+  "success": true,
+  "folders": [
+    {
+      "id": "sub_folder_id_1",
+      "name": "学习资料"
+    },
+    {
+      "id": "sub_folder_id_2",
+      "name": "娱乐"
+    }
+  ]
+}
+```
+
+-----
+
+### **2.3 获取文件夹内的书签**
+
+  - **Endpoint**: `/get_bookmarks/<folder_id>`
+  - **Method**: `GET`
+  - **Description**: 获取指定文件夹下的所有书签列表。
+  - **Authentication**: **需要**
+
+**URL Parameters**:
+| 参数        | 类型   | 描述                     |
+| :---------- | :----- | :----------------------- |
+| `folder_id` | String | 文件夹的 ID (主或子)   |
+
+**Success Response (`200 OK`)**:
+
+```json
+{
+  "success": true,
+  "bookmarks": [
+    {
+      "id": "bookmark_id_1",
+      "title": "视频标题",
+      "description": "视频描述...",
+      "link": "https://www.youtube.com/watch?v=...",
+      "cover": "covers/cover_file_id.jpg",
+      "filepath": "files/video_file_id.mp4"
+    }
+  ]
+}
+```
+
+*注：`cover` 和 `filepath` 是相对路径，需要与服务器域名拼接成完整 URL。如果书签没有关联文件，值为 `null`。*
+
+-----
+
+## **3. 数据创建与修改 (Data Creation & Modification)**
+
+### **3.1 创建子文件夹**
+
+  - **Endpoint**: `/create_folder`
+  - **Method**: `POST`
+  - **Description**: 在一个主文件夹下创建一个新的子文件夹。
+  - **Authentication**: **需要**
+
+**Request Body**:
+
+```json
+{
+  "name": "我的技术收藏",
+  "parent_id": "main_folder_id_for_documents"
+}
+```
+
+| 参数        | 类型   | 描述               | 是否必须 |
+| :---------- | :----- | :----------------- | :------- |
+| `name`      | String | 新文件夹的名称     | 是       |
+| `parent_id` | String | 所属主文件夹的 ID  | 是       |
+
+**Success Response (`201 Created`)**:
+
+```json
+{
+  "success": true,
+  "folder_id": "newly_created_folder_id"
+}
+```
+
+-----
+
+### **3.2 手动添加书签**
+
+  - **Endpoint**: `/add_bookmark`
+  - **Method**: `POST`
+  - **Description**: 手动添加一个书签条目，通常与手动上传封面和文件配合使用。
+  - **Authentication**: **需要**
+
+**Request Body**:
+
+```json
+{
+  "title": "手动添加的标题",
+  "description": "这是手动添加的书签描述",
+  "folder_id": "target_folder_id",
+  "link": "https://example.com/some_article",
+  "cover": "uploaded_cover_file_id",
+  "file_id": "uploaded_file_id" 
+}
+```
+
+| 参数          | 类型   | 描述                                     | 是否必须 |
+| :------------ | :----- | :--------------------------------------- | :------- |
+| `title`       | String | 书签标题                                 | 是       |
+| `description` | String | 书签描述                                 | 是       |
+| `folder_id`   | String | 要存入的文件夹 ID                        | 是       |
+| `link`        | String | 原始链接                                 | 是       |
+| `cover`       | String | 封面 ID (通过 `/upload_cover` 接口获取) | 是       |
+| `file_id`     | String | 文件 ID (通过 `/upload_file` 接口获取)  | 否       |
+
+**Success Response (`201 Created`)**:
+
+```json
+{
+  "success": true,
+  "bookmark_id": "newly_created_bookmark_id"
+}
+```
+
+-----
+
+## **4. 文件上传与访问 (File Uploads & Access)**
+
+### **4.1 上传文件**
+
+  - **Endpoint**: `/upload_file`
+  - **Method**: `POST`
+  - **Description**: 上传一个文件（如视频、文档），返回文件 ID 和路径。
+  - **Authentication**: **需要**
+  - **Request Body**: `multipart/form-data`
+      - `file`: 要上传的文件本身。
+
+**Success Response (`200 OK`)**:
+
+```json
+{
+  "success": true,
+  "file_id": "new_file_id",
+  "file_path": "files/new_file_id.mp4"
+}
+```
+
+### **4.2 上传封面**
+
+  - **Endpoint**: `/upload_cover`
+  - **Method**: `POST`
+  - **Description**: 上传一个封面图片，返回封面 ID 和路径。
+  - **Authentication**: **需要**
+  - **Request Body**: `multipart/form-data`
+      - `file`: 要上传的图片文件。
+
+**Success Response (`200 OK`)**:
+
+```json
+{
+  "success": true,
+  "file_id": "new_cover_id",
+  "file_path": "covers/new_cover_id.jpg"
+}
+```
+
+### **4.3 访问文件/封面**
+
+  - **Endpoint**: `/files/<filename>` 或 `/covers/<filename>`
+  - **Method**: `GET`
+  - **Description**: 通过文件名直接访问已上传的文件或封面。这些 URL 通常由其他 API (如 `/get_bookmarks`) 返回。
+
+-----
+
+## **5. 后台任务管理 (Background Task Management)**
+
+### **5.1 提交下载任务**
+
+  - **Endpoint**: `/craw_url`
+  - **Method**: `POST`
+  - **Description**: 提交一个 URL 进行后台抓取和下载。此接口能自动识别单个视频 URL 和 YouTube 播放列表 URL。
+  - **Authentication**: **需要**
+
+**Request Body**:
+
+```json
+{
+  "link": "https://www.youtube.com/watch?v=some_video_id",
+  "folder_id": "target_folder_id"
+}
+```
+
+| 参数        | 类型   | 描述                                  | 是否必须 |
+| :---------- | :----- | :------------------------------------ | :------- |
+| `link`      | String | 要下载的视频或播放列表的 URL          | 是       |
+| `folder_id` | String | 下载完成后书签要存入的文件夹 ID       | 是       |
+
+**Success Response (`200 OK`)**:
+
+  - **单个视频**:
+    ```json
+    {
+      "success": true,
+      "message": "任务已成功提交",
+      "task_id": "single_task_id"
+    }
+    ```
+  - **播放列表**:
+    ```json
+    {
+      "success": true,
+      "message": "N个任务已成功提交",
+      "task_ids": [
+        "task_id_1",
+        "task_id_2",
+        ...
+      ]
+    }
+    ```
+
+-----
+
+### **5.2 获取任务进度**
+
+  - **Endpoint**: `/get_progress/<task_id>`
+  - **Method**: `GET`
+  - **Description**: 查询指定后台任务的当前状态和进度。
+  - **Authentication**: **需要**
+
+**URL Parameters**:
+| 参数      | 类型   | 描述           |
+| :-------- | :----- | :------------- |
+| `task_id` | String | 任务的 ID      |
+
+**Success Response (`200 OK`)**:
+
+```json
+{
+  "success": true,
+  "task_id": "queried_task_id",
+  "status": "DOWNLOADING", // PENDING, DOWNLOADING, COMPLETED, FAILED
+  "progress": 50, // 进度百分比 (0-100)
+  "message": "正在下载视频..."
+}
+```
+
+**Error Responses**:
+
+  - `404 Not Found`: 任务不存在或用户无权查看。
+
+-----
+
+### **5.3 查询未完成的任务**
+
+  - **Endpoint**: `/recover_tasks`
+  - **Method**: `POST`
+  - **Description**: 查询指定文件夹下所有未完成（非 `COMPLETED` 状态）的任务 ID 列表。此接口仅用于查询，真正的任务恢复在服务启动时自动进行。
+  - **Authentication**: **需要**
+
+**Request Body**:
+
+```json
+{
+  "folder_id": "target_folder_id"
+}
+```
+
+**Success Response (`200 OK`)**:
+
+```json
+{
+  "success": true,
+  "message": "找到 2 个未完成的任务。",
+  "task_ids": [
+    "unfinished_task_id_1",
+    "unfinished_task_id_2"
+  ]
+}
+```

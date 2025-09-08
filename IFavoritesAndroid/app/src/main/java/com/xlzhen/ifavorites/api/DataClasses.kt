@@ -6,6 +6,7 @@ data class RegisterResponse(val success: Boolean, val user_id: String?, val mess
 data class LoginRequest(val email: String, val password: String)
 data class LoginResponse(val success: Boolean, val user_id: String?, val message: String?)
 
+
 data class UploadResponse(val success: Boolean, val file_id: String?, val file_path: String?, val message: String?)
 
 data class GeneralResponse(val success: Boolean, val message: String?)

@@ -45,6 +45,7 @@
                 <data android:mimeType="video/*" />
             </intent-filter>
         </activity>
+        <activity android:name=".LoginActivity"/>
     </application>
 
 </manifest>

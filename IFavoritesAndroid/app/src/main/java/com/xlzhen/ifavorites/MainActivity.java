@@ -1,5 +1,6 @@
 package com.xlzhen.ifavorites;
 
+import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
@@ -12,8 +13,10 @@ import com.xlzhen.ifavorites.adapter.ViewPagerAdapter;
 import com.xlzhen.ifavorites.api.Folder;
 import com.xlzhen.ifavorites.api.MainFolderService;
 import com.xlzhen.ifavorites.databinding.ActivityMainBinding;
+import com.xlzhen.ifavorites.model.UserInfo;
 import com.xlzhen.ifavorites.viewmodel.MainActivityViewModel;
 import com.xlzhen.mvvm.activity.BaseActivity;
+import com.xlzhen.mvvm.storage.StorageUtils;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -31,11 +34,14 @@ public class MainActivity extends BaseActivity<ActivityMainBinding, MainActivity
 
     @Override
     protected void initData() {
-        if(binding.viewPager.getAdapter() != null){
+        if (binding.viewPager.getAdapter() != null) {
             return;
         }
+        UserInfo userInfo = StorageUtils.getData(this, "userInfo", UserInfo.class);
+        if(userInfo == null)
+            return;
         // 调用封装好的 Kotlin 静态方法
-        CompletableFuture<List<Folder>> future = MainFolderService.loadMainFoldersAsync("Bearer ff4c1142-70b4-4bc5-8ad4-d088c40f9cce");
+        CompletableFuture<List<Folder>> future = MainFolderService.loadMainFoldersAsync(String.format("Bearer %s", userInfo.getUserId()));
 
         future.thenAccept(mainFolders -> {
             // 在 CompletableFuture 的默认线程池中执行
@@ -72,5 +78,16 @@ public class MainActivity extends BaseActivity<ActivityMainBinding, MainActivity
     @Override
     protected ActivityMainBinding bindingInflate() {
         return ActivityMainBinding.inflate(getLayoutInflater());
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        UserInfo userInfo = StorageUtils.getData(this, "userInfo", UserInfo.class);
+        if (userInfo == null) {
+            Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, LoginActivity.class));
+
+        }
     }
 }

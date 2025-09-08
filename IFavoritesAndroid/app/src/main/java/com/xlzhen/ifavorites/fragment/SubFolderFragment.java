@@ -27,8 +27,10 @@ import com.xlzhen.ifavorites.api.RecoveryTasksUrlService;
 import com.xlzhen.ifavorites.api.SubFolderService;
 import com.xlzhen.ifavorites.databinding.FragmentSubFolderBinding;
 import com.xlzhen.ifavorites.dialog.LoadingDialog;
+import com.xlzhen.ifavorites.model.UserInfo;
 import com.xlzhen.ifavorites.viewmodel.SubFolderFragmentViewModel;
 import com.xlzhen.mvvm.fragment.BaseFragment;
+import com.xlzhen.mvvm.storage.StorageUtils;
 
 import java.util.List;
 import java.util.Objects;
@@ -37,7 +39,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, SubFolderFragmentViewModel> {
     private String currentFolderId;
-    private final String userId = "ff4c1142-70b4-4bc5-8ad4-d088c40f9cce";
     private ViewPagerAdapter viewPagerAdapter;
     private LoadingDialog loadingDialog;
 
@@ -62,8 +63,11 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
     }
 
     private void getBookmarks(String folderId) {
+        UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        if(userInfo == null)
+            return;
         // 调用封装好的 Kotlin 静态方法
-        CompletableFuture<List<Bookmark>> future = BookmarkService.loadBookmarkAsync("Bearer ff4c1142-70b4-4bc5-8ad4-d088c40f9cce", folderId);
+        CompletableFuture<List<Bookmark>> future = BookmarkService.loadBookmarkAsync(String.format("Bearer %s", userInfo.getUserId()), folderId);
 
         future.thenAccept(bookmarks -> {
             // 在 CompletableFuture 的默认线程池中执行
@@ -86,8 +90,11 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
     }
 
     private void getSubFolders(String folderId) {
+        UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        if(userInfo == null)
+            return;
         // 调用封装好的 Kotlin 静态方法
-        CompletableFuture<List<Folder>> future = SubFolderService.loadSubFoldersAsync("Bearer ff4c1142-70b4-4bc5-8ad4-d088c40f9cce", folderId);
+        CompletableFuture<List<Folder>> future = SubFolderService.loadSubFoldersAsync(String.format("Bearer %s", userInfo.getUserId()), folderId);
 
         future.thenAccept(subFolders -> {
             // 在 CompletableFuture 的默认线程池中执行
@@ -170,7 +177,10 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
 
     private void createSubFolder(String subName) {
         // 调用封装好的 Kotlin 静态方法
-        CompletableFuture<Boolean> future = CreateSubFolderService.createSubFoldersAsync("Bearer ff4c1142-70b4-4bc5-8ad4-d088c40f9cce", currentFolderId, subName, userId);
+        UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        if(userInfo == null)
+            return;
+        CompletableFuture<Boolean> future = CreateSubFolderService.createSubFoldersAsync(String.format("Bearer %s", userInfo.getUserId()), currentFolderId, subName, userInfo.getUserId());
 
         future.thenAccept(success -> {
             // 在 CompletableFuture 的默认线程池中执行
@@ -191,7 +201,10 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
     }
 
     public void getProgressStatus(List<String> taskIds, AtomicInteger atomicInteger) {
-        CompletableFuture<Progress> future = GetProgressService.getProgressAsync("Bearer ff4c1142-70b4-4bc5-8ad4-d088c40f9cce", taskIds.get(atomicInteger.get()));
+        UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        if(userInfo == null)
+            return;
+        CompletableFuture<Progress> future = GetProgressService.getProgressAsync(String.format("Bearer %s", userInfo.getUserId()), taskIds.get(atomicInteger.get()));
         future.thenAccept(progress -> {
             // 在 CompletableFuture 的默认线程池中执行
             // 切换到主线程进行 UI 更新
@@ -224,8 +237,11 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
     }
 
     public void recoveryTaskServer(){
+        UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        if(userInfo == null)
+            return;
         // 调用封装好的 Kotlin 静态方法
-        CompletableFuture<List<String>> future = RecoveryTasksUrlService.recoveryTasksUrlAsync("Bearer ff4c1142-70b4-4bc5-8ad4-d088c40f9cce", currentFolderId);
+        CompletableFuture<List<String>> future = RecoveryTasksUrlService.recoveryTasksUrlAsync(String.format("Bearer %s", userInfo.getUserId()), currentFolderId);
 
         future.thenAccept(taskIds -> {
             // 在 CompletableFuture 的默认线程池中执行
@@ -251,6 +267,9 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
     }
 
     public void addBookmarkUrlServer(String url) {
+        UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        if(userInfo == null)
+            return;
         if (loadingDialog == null) {
             loadingDialog = new LoadingDialog(requireActivity());
         }
@@ -258,7 +277,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             loadingDialog.show();
         }
         // 调用封装好的 Kotlin 静态方法
-        CompletableFuture<List<String>> future = AddBookmarkUrlService.addBookmarkUrlAsync("Bearer ff4c1142-70b4-4bc5-8ad4-d088c40f9cce", currentFolderId, url);
+        CompletableFuture<List<String>> future = AddBookmarkUrlService.addBookmarkUrlAsync(String.format("Bearer %s", userInfo.getUserId()), currentFolderId, url);
 
         future.thenAccept(taskIds -> {
             // 在 CompletableFuture 的默认线程池中执行

@@ -20,7 +20,7 @@
             android:gravity="center"
             android:paddingTop="50dp"
             android:paddingBottom="10dp"
-            android:text="@{loginActivity.loginOrRegister?@string/login:@string/register"
+            android:text="@{loginActivity.loginOrRegister?@string/login:@string/register}"
             android:textColor="@color/black"
             android:textSize="20sp"
             app:layout_constraintLeft_toLeftOf="parent"
@@ -39,6 +39,7 @@
             <com.google.android.material.textfield.TextInputEditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:text="@={loginActivity.email}"
                 android:inputType="textEmailAddress" />
 
         </com.google.android.material.textfield.TextInputLayout>
@@ -55,6 +56,7 @@
             <com.google.android.material.textfield.TextInputEditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:text="@={loginActivity.password}"
                 android:inputType="textPassword" />
 
         </com.google.android.material.textfield.TextInputLayout>
@@ -64,9 +66,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="10dp"
+            app:cornerRadius="5dp"
             android:onClick="@{loginActivity::loginClick}"
             android:padding="10dp"
-            android:text="@{loginActivity.loginOrRegister?@string/login:@string/register"
+            android:text="@{loginActivity.loginOrRegister?@string/login:@string/register}"
             app:layout_constraintTop_toBottomOf="@+id/password_text_input_layout" />
 
         <androidx.appcompat.widget.AppCompatTextView

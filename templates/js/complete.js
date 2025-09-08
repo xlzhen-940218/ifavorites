@@ -266,6 +266,8 @@ crawlUrlForm.addEventListener('submit', async (e) => {
     const submitBtn = document.getElementById('crawl-url-submit-btn');
     const messageEl = document.getElementById('crawl-url-message');
     const link = document.getElementById('crawl-url-link').value;
+    const download = document.getElementById('crawl-url-download').checked;
+
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<div class="loader !w-5 !h-5 !border-2 mr-2"></div> 抓取中...`;
     messageEl.textContent = '';
@@ -274,7 +276,8 @@ crawlUrlForm.addEventListener('submit', async (e) => {
             method: 'POST',
             body: JSON.stringify({
                 folder_id: currentSubFolderId,
-                link: link
+                link: link,
+                is_download: download,
             })
         });
         if (result && result.success) {

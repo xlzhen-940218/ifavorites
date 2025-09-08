@@ -10,4 +10,5 @@
     <string name="go_register">没有账号？去注册！</string>
     <string name="go_login">已有帐号，去登陆！</string>
     <string name="register">注册</string>
+    <string name="download_resource">下载该资源</string>
 </resources>

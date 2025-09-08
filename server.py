@@ -161,6 +161,7 @@ def init_db():
                 folder_id TEXT NOT NULL,
                 status TEXT NOT NULL, -- PENDING, DOWNLOADING, COMPLETED, FAILED
                 progress INTEGER,
+                is_download INTEGER,
                 message TEXT,
                 result TEXT, -- 成功时可存储 bookmark_id
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -216,7 +217,7 @@ def login_required(f):
 # --------------------------------------------------------------------------- #
 # 核心业务逻辑 (后台任务)
 # --------------------------------------------------------------------------- #
-def process_video_download(task_id, link, folder_id, user_id):
+def process_video_download(task_id, link, folder_id, user_id, is_download):
     with app.app_context():
         """
         在后台线程中处理视频下载的完整流程。
@@ -274,24 +275,28 @@ def process_video_download(task_id, link, folder_id, user_id):
                                        (cover_file_id, filename, filepath))
                         conn.commit()
 
-                # 4. 下载视频文件
-                update_task_status('DOWNLOADING', 50, '正在下载视频...')
-                video_file_id = str(uuid.uuid4())
-                # 使用 yt-dlp 的输出模板确保文件名唯一且安全
-                video_filepath_template = os.path.join(app.config['UPLOAD_FOLDER'], f"{video_file_id}.%(ext)s")
-                cmd = [YTDLP_CMD, video_data.get('webpage_url'), "--remux-video", "mp4", "--cookies", "cookie.txt", "-o", video_filepath_template]
-                subprocess.run(cmd, check=True, capture_output=True)
+                if is_download:
+                    # 4. 下载视频文件
+                    update_task_status('DOWNLOADING', 50, '正在下载视频...')
+                    video_file_id = str(uuid.uuid4())
+                    # 使用 yt-dlp 的输出模板确保文件名唯一且安全
+                    video_filepath_template = os.path.join(app.config['UPLOAD_FOLDER'], f"{video_file_id}.%(ext)s")
+                    cmd = [YTDLP_CMD, video_data.get('webpage_url'), "--remux-video", "mp4", "--cookies", "cookie.txt",
+                           "-o", video_filepath_template]
+                    subprocess.run(cmd, check=True, capture_output=True)
 
-                # 下载完成后，确定实际的文件路径（因为扩展名是动态的）
-                final_video_filename = f"{video_file_id}.mp4"
-                final_video_filepath = os.path.join(app.config['UPLOAD_FOLDER'], final_video_filename)
+                    # 下载完成后，确定实际的文件路径（因为扩展名是动态的）
+                    final_video_filename = f"{video_file_id}.mp4"
+                    final_video_filepath = os.path.join(app.config['UPLOAD_FOLDER'], final_video_filename)
 
-                # 将视频文件信息存入数据库
-                with sqlite3.connect(DB_NAME) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("INSERT INTO files (id, original_filename, filepath) VALUES (?, ?, ?)",
-                                   (video_file_id, video_data.get('title', 'untitled'), final_video_filepath))
-                    conn.commit()
+                    # 将视频文件信息存入数据库
+                    with sqlite3.connect(DB_NAME) as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("INSERT INTO files (id, original_filename, filepath) VALUES (?, ?, ?)",
+                                       (video_file_id, video_data.get('title', 'untitled'), final_video_filepath))
+                        conn.commit()
+                else:
+                    video_file_id = None
 
                 # 5. 将下载好的视频信息作为书签存入数据库
                 update_task_status('DOWNLOADING', 90, '正在保存书签信息...')
@@ -367,7 +372,7 @@ def serve_files(filename):
 
     # 检查请求的范围是否有效
     if start >= size or end >= size or start > end:
-        return '', 416 # 416 Range Not Satisfiable
+        return '', 416  # 416 Range Not Satisfiable
 
     length = end - start + 1
 
@@ -381,6 +386,7 @@ def serve_files(filename):
     resp.headers.add('Accept-Ranges', 'bytes')
 
     return resp
+
 
 # --- 页面路由 ---
 @app.route('/')
@@ -643,7 +649,7 @@ def add_bookmark(user_id):
 
 # --- 爬虫与后台任务 API (受保护) ---
 
-def _create_and_start_download_task(link, user_id, folder_id):
+def _create_and_start_download_task(link, user_id, folder_id, is_download):
     """
     创建下载任务记录并启动后台下载线程的辅助函数。
     :return: task_id 或 None (如果创建失败)
@@ -653,12 +659,12 @@ def _create_and_start_download_task(link, user_id, folder_id):
         with sqlite3.connect(DB_NAME) as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO tasks (id, link, user_id, folder_id, status, progress) VALUES (?, ?, ?, ?, ?, ?)",
-                (task_id, link, user_id, folder_id, 'PENDING', 0)
+                "INSERT INTO tasks (id, link, user_id, folder_id, status, progress, is_download) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (task_id, link, user_id, folder_id, 'PENDING', 0, is_download)
             )
             conn.commit()
         # 在新线程中运行下载任务
-        threading.Thread(target=process_video_download, args=(task_id, link, folder_id, user_id)).start()
+        threading.Thread(target=process_video_download, args=(task_id, link, folder_id, user_id, is_download)).start()
         return task_id
     except Exception:
         return None
@@ -674,6 +680,7 @@ def craw_url(user_id):
     data = request.json
     link = data.get('link')
     folder_id = data.get('folder_id')
+    is_download: bool = data.get('is_download')
     if not link or not folder_id:
         return jsonify({"success": False, "message": "链接和文件夹ID是必填项"}), 400
 
@@ -688,7 +695,7 @@ def craw_url(user_id):
 
     if not is_playlist:
         # 处理单个视频
-        task_id = _create_and_start_download_task(link, user_id, folder_id)
+        task_id = _create_and_start_download_task(link, user_id, folder_id, is_download)
         if task_id:
             return jsonify({"success": True, "message": "任务已成功提交", "task_id": task_id})
         else:
@@ -707,7 +714,7 @@ def craw_url(user_id):
             for entry in playlist_data.get('entries', []):
                 video_url = entry.get('url')
                 if video_url:
-                    task_id = _create_and_start_download_task(video_url, user_id, folder_id)
+                    task_id = _create_and_start_download_task(video_url, user_id, folder_id, is_download)
                     if task_id:
                         task_ids.append(task_id)
 
@@ -787,7 +794,8 @@ def recovery_all_unfinished_tasks():
         try:
             with sqlite3.connect(DB_NAME) as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT id, link, folder_id, user_id FROM tasks WHERE status != ?", ('COMPLETED',))
+                cursor.execute("SELECT id, link, folder_id, user_id, is_download FROM tasks WHERE status != ?",
+                               ('COMPLETED',))
                 unfinished_tasks = cursor.fetchall()
 
                 if not unfinished_tasks:
@@ -796,13 +804,14 @@ def recovery_all_unfinished_tasks():
 
                 print(f"找到 {len(unfinished_tasks)} 个需要恢复的任务。")
                 for task in unfinished_tasks:
-                    task_id, link, folder_id, user_id = task
+                    task_id, link, folder_id, user_id, is_download = task
                     print(f"重新提交任务: {task_id}")
                     # 将任务状态重置为 PENDING
                     cursor.execute("UPDATE tasks SET status = ? WHERE id = ?", ('PENDING', task_id))
                     conn.commit()
                     # 在新线程中重新启动下载
-                    threading.Thread(target=process_video_download, args=(task_id, link, folder_id, user_id)).start()
+                    threading.Thread(target=process_video_download,
+                                     args=(task_id, link, folder_id, user_id, is_download)).start()
         except Exception as e:
             print(f"恢复任务时发生错误: {e}")
 

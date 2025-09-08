@@ -334,14 +334,16 @@
 ```json
 {
   "link": "https://www.youtube.com/watch?v=some_video_id",
-  "folder_id": "target_folder_id"
+  "folder_id": "target_folder_id",
+  "is_download": true
 }
 ```
 
-| 参数        | 类型   | 描述                                  | 是否必须 |
-| :---------- | :----- | :------------------------------------ | :------- |
-| `link`      | String | 要下载的视频或播放列表的 URL          | 是       |
-| `folder_id` | String | 下载完成后书签要存入的文件夹 ID       | 是       |
+| 参数            | 类型      | 描述                | 是否必须     |
+|:--------------|:--------|:------------------|:---------|
+| `link`        | String  | 要下载的视频或播放列表的 URL  | 是        |
+| `folder_id`   | String  | 下载完成后书签要存入的文件夹 ID | 是        |
+| `is_download` | Boolean | 是否下载视频            | 否（默认不下载） |
 
 **Success Response (`200 OK`)**:
 

@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Patterns;
 import android.view.LayoutInflater;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
@@ -13,8 +14,12 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.AppCompatEditText;
 
+import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.tabs.TabLayoutMediator;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.xlzhen.ifavorites.BR;
+import com.xlzhen.ifavorites.R;
 import com.xlzhen.ifavorites.adapter.ViewPagerAdapter;
 import com.xlzhen.ifavorites.api.AddBookmarkUrlService;
 import com.xlzhen.ifavorites.api.Bookmark;
@@ -64,7 +69,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
 
     private void getBookmarks(String folderId) {
         UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
-        if(userInfo == null)
+        if (userInfo == null)
             return;
         // 调用封装好的 Kotlin 静态方法
         CompletableFuture<List<Bookmark>> future = BookmarkService.loadBookmarkAsync(String.format("Bearer %s", userInfo.getUserId()), folderId);
@@ -91,7 +96,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
 
     private void getSubFolders(String folderId) {
         UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
-        if(userInfo == null)
+        if (userInfo == null)
             return;
         // 调用封装好的 Kotlin 静态方法
         CompletableFuture<List<Folder>> future = SubFolderService.loadSubFoldersAsync(String.format("Bearer %s", userInfo.getUserId()), folderId);
@@ -163,13 +168,16 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
     }
 
     public void addFolder() {
-        var input = new AppCompatEditText(context);
+        TextInputLayout textInputLayout = (TextInputLayout) ViewGroup.inflate(requireActivity(), R.layout.alert_edittext_layout, null);
+        textInputLayout.setHint("请输入菜单名称");
+        //var input = new AppCompatEditText(context);
         new AlertDialog.Builder(requireContext())
                 .setTitle("新增二级菜单")
-                .setView(input)
+                .setView(textInputLayout)
                 .setPositiveButton("确定", (dialogInterface, i) -> {
-                    if (Objects.requireNonNull(input.getText()).length() > 0) {
-                        String subName = input.getText().toString();
+                    TextInputEditText inputEditText = textInputLayout.findViewById(R.id.text_input_edit);
+                    if (Objects.requireNonNull(inputEditText.getText()).length() > 0) {
+                        String subName = inputEditText.getText().toString();
                         createSubFolder(subName);
                     }
                 }).setNegativeButton("取消", null).show();
@@ -178,7 +186,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
     private void createSubFolder(String subName) {
         // 调用封装好的 Kotlin 静态方法
         UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
-        if(userInfo == null)
+        if (userInfo == null)
             return;
         CompletableFuture<Boolean> future = CreateSubFolderService.createSubFoldersAsync(String.format("Bearer %s", userInfo.getUserId()), currentFolderId, subName, userInfo.getUserId());
 
@@ -202,7 +210,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
 
     public void getProgressStatus(List<String> taskIds, AtomicInteger atomicInteger) {
         UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
-        if(userInfo == null)
+        if (userInfo == null)
             return;
         CompletableFuture<Progress> future = GetProgressService.getProgressAsync(String.format("Bearer %s", userInfo.getUserId()), taskIds.get(atomicInteger.get()));
         future.thenAccept(progress -> {
@@ -211,7 +219,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             new Handler(Looper.getMainLooper()).post(() -> {
                 model.progressMessage.postValue(progress.getMessage());
                 if ("COMPLETED".equals(progress.getStatus()) || "FAILED".equals(progress.getStatus())) {
-                    if(atomicInteger.get() < taskIds.size()) {
+                    if (atomicInteger.get() < taskIds.size()) {
                         atomicInteger.addAndGet(1);
                         binding.subFolderTabLayout.postDelayed(() -> {
                             getProgressStatus(taskIds, atomicInteger);
@@ -220,7 +228,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
                     model.successCount.postValue(atomicInteger.get());
                     model.totalCount.postValue(taskIds.size());
                     getBookmarks(currentFolderId);
-                }else {
+                } else {
                     binding.subFolderTabLayout.postDelayed(() -> {
                         getProgressStatus(taskIds, atomicInteger);
                     }, 3000);
@@ -236,9 +244,9 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
         });
     }
 
-    public void recoveryTaskServer(){
+    public void recoveryTaskServer() {
         UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
-        if(userInfo == null)
+        if (userInfo == null)
             return;
         // 调用封装好的 Kotlin 静态方法
         CompletableFuture<List<String>> future = RecoveryTasksUrlService.recoveryTasksUrlAsync(String.format("Bearer %s", userInfo.getUserId()), currentFolderId);
@@ -266,9 +274,9 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
         });
     }
 
-    public void addBookmarkUrlServer(String url) {
+    public void addBookmarkUrlServer(String url, Boolean downloadResource) {
         UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
-        if(userInfo == null)
+        if (userInfo == null)
             return;
         if (loadingDialog == null) {
             loadingDialog = new LoadingDialog(requireActivity());
@@ -277,7 +285,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             loadingDialog.show();
         }
         // 调用封装好的 Kotlin 静态方法
-        CompletableFuture<List<String>> future = AddBookmarkUrlService.addBookmarkUrlAsync(String.format("Bearer %s", userInfo.getUserId()), currentFolderId, url);
+        CompletableFuture<List<String>> future = AddBookmarkUrlService.addBookmarkUrlAsync(String.format("Bearer %s", userInfo.getUserId()), currentFolderId, url, downloadResource);
 
         future.thenAccept(taskIds -> {
             // 在 CompletableFuture 的默认线程池中执行
@@ -311,15 +319,20 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
     }
 
     public void addBookmarkUrl() {
-        var input = new AppCompatEditText(context);
+        TextInputLayout textInputLayout = (TextInputLayout) ViewGroup.inflate(requireActivity(), R.layout.alert_edittext_layout, null);
+        textInputLayout.setHint("请输入收藏夹链接");
+        textInputLayout.findViewById(R.id.download_checkbox).setVisibility(View.VISIBLE);
         new AlertDialog.Builder(requireContext())
                 .setTitle("新增收藏夹链接")
-                .setView(input)
+                .setView(textInputLayout)
                 .setPositiveButton("确定", (dialogInterface, i) -> {
+                    TextInputEditText input = textInputLayout.findViewById(R.id.text_input_edit);
+                    MaterialCheckBox checkBox = textInputLayout.findViewById(R.id.download_checkbox);
                     if (Objects.requireNonNull(input.getText()).length() > 0) {
                         String url = input.getText().toString();
+                        Boolean downloadResource = checkBox.isChecked();
                         if (isValidUrl(url)) {
-                            addBookmarkUrlServer(url);
+                            addBookmarkUrlServer(url, downloadResource);
                         } else {
                             Toast.makeText(requireActivity(), "url不合法！", Toast.LENGTH_SHORT).show();
                         }

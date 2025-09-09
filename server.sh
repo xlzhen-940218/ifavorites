@@ -13,5 +13,9 @@ echo "check ffmpeg"
 chmod +x ./install-ffmpeg.sh
 ./install-ffmpeg.sh
 
+echo "check yt-dlp-exec"
+chmod +x ./download-ytdlp.sh
+./download-ytdlp.sh
+
 echo "start server"
 python server.py

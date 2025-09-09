@@ -187,3 +187,5 @@ yt-dlp.exe
 cookie.txt
 IFavoritesAndroid/app/ifavorites
 /IFavoritesAndroid/app/release
+yt-dlp-exec
+ffmpeg

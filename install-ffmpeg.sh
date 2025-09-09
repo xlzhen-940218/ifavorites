@@ -10,8 +10,10 @@ elif command -v dnf &> /dev/null; then
     PKG_MANAGER="dnf"
 elif command -v yum &> /dev/null; then
     PKG_MANAGER="yum"
+elif command -v brew &> /dev/null; then
+    PKG_MANAGER="brew"
 else
-    echo "无法找到支持的包管理器（apt, dnf, yum）。请手动安装 ffmpeg。"
+    echo "无法找到支持的包管理器（apt, dnf, yum, brew）。请手动安装 ffmpeg。"
     exit 1
 fi
 
@@ -21,6 +23,8 @@ if [ "$PKG_MANAGER" = "apt" ]; then
     INSTALL_CMD="$PKG_MANAGER update && $PKG_MANAGER install -y $PACKAGE_NAME"
 elif [ "$PKG_MANAGER" = "dnf" ] || [ "$PKG_MANAGER" = "yum" ]; then
     INSTALL_CMD="$PKG_MANAGER install -y $PACKAGE_NAME"
+elif [ "$PKG_MANAGER" = "brew"]; then
+    INSTALL_CMD="$PKG_MANAGER install $PACKAGE_NAME"
 fi
 
 # Check if ffmpeg is already installed

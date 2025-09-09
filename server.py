@@ -638,10 +638,21 @@ def create_folder(user_id):
     if not name or not parent_id:
         return jsonify({"success": False, "message": "文件夹名称和父级ID是必填项"}), 400
 
+
     try:
         folder_id = str(uuid.uuid4())
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        cursor.execute("SELECT id, name FROM main_folders")
+        main_folders = [{"id": row['id'], "name": row['name']} for row in cursor.fetchall()]
+        is_main_folder = False
+        for folder in main_folders:
+            if parent_id in folder['id']:
+                is_main_folder = True
+        if not is_main_folder:
+            return jsonify({"success": False, "message": "子文件夹下不得再添加子文件夹"}), 405
+
         # 插入新文件夹
         cursor.execute("INSERT INTO folders (id, name, parent_id) VALUES (?, ?, ?)", (folder_id, name, parent_id))
         # 绑定文件夹到当前用户
@@ -869,4 +880,4 @@ if __name__ == '__main__':
     recovery_thread.daemon = True  # 设置为守护线程，主程序退出时它也会退出
     recovery_thread.start()
     # 3. 启动 Flask Web 服务器
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=8090, debug=True)

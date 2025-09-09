@@ -291,7 +291,8 @@ def process_video_download(task_id, link, folder_id, user_id, is_download):
                     # 下载完成后，确定实际的文件路径（因为扩展名是动态的）
                     final_video_filename = f"{video_file_id}.mp4"
                     final_video_filepath = os.path.join(app.config['UPLOAD_FOLDER'], final_video_filename)
-
+                    if not os.path.exists(final_video_filepath):
+                        raise Exception(result.stdout + result.stderr)
                     # 将视频文件信息存入数据库
                     with sqlite3.connect(DB_NAME) as conn:
                         cursor = conn.cursor()

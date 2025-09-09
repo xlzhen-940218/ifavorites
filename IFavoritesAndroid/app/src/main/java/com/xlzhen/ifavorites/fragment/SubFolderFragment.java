@@ -94,7 +94,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
                 try {
-                    Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireActivity(), getString(R.string.network_error) + e.getMessage(), Toast.LENGTH_SHORT).show();
                 } catch (Exception ex) {
                     System.err.println(ex.getMessage());
                 }
@@ -160,7 +160,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
                 try {
-                    Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireActivity(), getString(R.string.network_error) + e.getMessage(), Toast.LENGTH_SHORT).show();
                 } catch (Exception ex) {
                     System.err.println(ex.getMessage());
                 }
@@ -200,18 +200,18 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
 
     public void addFolder() {
         TextInputLayout textInputLayout = (TextInputLayout) ViewGroup.inflate(requireActivity(), R.layout.alert_edittext_layout, null);
-        textInputLayout.setHint("请输入菜单名称");
+        textInputLayout.setHint(R.string.please_input_sub_menu_name);
         //var input = new AppCompatEditText(context);
         new AlertDialog.Builder(requireContext())
-                .setTitle("新增二级菜单")
+                .setTitle(R.string.add_sub_menu)
                 .setView(textInputLayout)
-                .setPositiveButton("确定", (dialogInterface, i) -> {
+                .setPositiveButton(R.string.ok, (dialogInterface, i) -> {
                     TextInputEditText inputEditText = textInputLayout.findViewById(R.id.text_input_edit);
                     if (Objects.requireNonNull(inputEditText.getText()).length() > 0) {
                         String subName = inputEditText.getText().toString();
                         createSubFolder(subName);
                     }
-                }).setNegativeButton("取消", null).show();
+                }).setNegativeButton(R.string.cancel, null).show();
     }
 
     private void createSubFolder(String subName) {
@@ -239,7 +239,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
                 try {
-                    Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireActivity(), getString(R.string.network_error) + e.getMessage(), Toast.LENGTH_SHORT).show();
                 } catch (Exception ex) {
                     System.err.println(ex.getMessage());
                 }
@@ -284,7 +284,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
                 try {
-                    Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireActivity(), getString(R.string.network_error) + e.getMessage(), Toast.LENGTH_SHORT).show();
                 } catch (Exception ex) {
                     System.err.println(ex.getMessage());
                 }
@@ -323,7 +323,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
                 try {
-                    Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireActivity(), getString(R.string.network_error) + e.getMessage(), Toast.LENGTH_SHORT).show();
                 } catch (Exception ex) {
                     System.err.println(ex.getMessage());
                 }
@@ -371,7 +371,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
                 try {
-                    Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireActivity(), getString(R.string.network_error) + e.getMessage(), Toast.LENGTH_SHORT).show();
                 } catch (Exception ex) {
                     System.err.println(ex.getMessage());
                 }
@@ -388,12 +388,12 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
     public void addBookmarkUrl() {
         try {
             TextInputLayout textInputLayout = (TextInputLayout) ViewGroup.inflate(requireActivity(), R.layout.alert_edittext_layout, null);
-            textInputLayout.setHint("请输入收藏夹链接");
+            textInputLayout.setHint(R.string.please_input_favorite_url);
             textInputLayout.findViewById(R.id.download_checkbox).setVisibility(View.VISIBLE);
             new AlertDialog.Builder(requireContext())
-                    .setTitle("新增收藏夹链接")
+                    .setTitle(R.string.add_favorite_url)
                     .setView(textInputLayout)
-                    .setPositiveButton("确定", (dialogInterface, i) -> {
+                    .setPositiveButton(R.string.ok, (dialogInterface, i) -> {
                         TextInputEditText input = textInputLayout.findViewById(R.id.text_input_edit);
                         MaterialCheckBox checkBox = textInputLayout.findViewById(R.id.download_checkbox);
                         if (Objects.requireNonNull(input.getText()).length() > 0) {
@@ -402,10 +402,10 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
                             if (isValidUrl(url)) {
                                 addBookmarkUrlServer(url, downloadResource);
                             } else {
-                                Toast.makeText(requireActivity(), "url不合法！", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(requireActivity(), R.string.url_correct, Toast.LENGTH_SHORT).show();
                             }
                         }
-                    }).setNegativeButton("取消", null).show();
+                    }).setNegativeButton(R.string.cancel, null).show();
         } catch (Exception ex) {
             System.err.println(ex.getMessage());
         }

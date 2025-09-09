@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">IFavorites</string>
+    <string name="creator">Créateur</string>
+    <string name="ifavorite">Mes favoris</string>
+    <string name="loading">Chargement en cours, veuillez patienter...</string>
+    <string name="downloading">%s (%d/%d)</string>
+    <string name="login">Connexion</string>
+    <string name="please_input_email">Veuillez entrer votre adresse e-mail</string>
+    <string name="please_input_password">Veuillez entrer votre mot de passe</string>
+    <string name="go_register">Pas de compte ? Inscrivez-vous !</string>
+    <string name="go_login">Vous avez déjà un compte ? Connectez-vous !</string>
+    <string name="register">S\'inscrire</string>
+    <string name="download_resource">Télécharger cette ressource</string>
+    <string name="please_input_server_url">Veuillez entrer l\'adresse du serveur (ex: http://192.168.1.100:5000)</string>
+    <string name="please_first_login">Veuillez d\'abord vous connecter</string>
+    <string name="main_folders_load_failed">Échec du chargement des dossiers principaux</string>
+    <string name="network_error">Erreur réseau : </string>
+    <string name="login_failed">Échec de la connexion</string>
+    <string name="login_success">Connexion réussie</string>
+    <string name="favorite_complete">Ajout aux favoris terminé !</string>
+    <string name="sub_menu_cannot_empty">Le sous-menu ne peut pas être vide</string>
+    <string name="new_sub_menu">Nouveau sous-menu : </string>
+    <string name="please_input_favorite_url">Veuillez entrer le lien du favori</string>
+    <string name="add_favorite_url">Ajouter un lien de favori</string>
+    <string name="url_correct">URL invalide !</string>
+    <string name="cancel">Annuler</string>
+    <string name="ok">OK</string>
+    <string name="please_input_sub_menu_name">Veuillez entrer le nom du menu</string>
+    <string name="add_sub_menu">Ajouter un sous-menu</string>
+    <string name="add_favorite">Ajouter un favori</string>
+    <string name="select_main_folders">Sélectionner un menu principal</string>
+    <string name="select_sub_menu">Sélectionner un sous-menu</string>
+    <string name="i_need_add_sub_menu">Je dois ajouter un nouveau menu</string>
+    <string name="please_input_link">Lien à télécharger</string>
+    <string name="download_the_resource">Télécharger cette ressource</string>
+    <string name="click_favorite">Cliquer pour ajouter aux favoris</string>
+</resources>

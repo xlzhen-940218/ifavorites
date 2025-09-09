@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">IFavorites</string>
+    <string name="creator">Ersteller</string>
+    <string name="ifavorite">Meine Favoriten</string>
+    <string name="loading">Wird geladen, bitte warten...</string>
+    <string name="downloading">%s (%d/%d)</string>
+    <string name="login">Anmelden</string>
+    <string name="please_input_email">Bitte geben Sie Ihre E-Mail-Adresse ein</string>
+    <string name="please_input_password">Bitte geben Sie Ihr Passwort ein</string>
+    <string name="go_register">Noch kein Konto? Registrieren Sie sich!</string>
+    <string name="go_login">Sie haben bereits ein Konto? Melden Sie sich an!</string>
+    <string name="register">Registrieren</string>
+    <string name="download_resource">Diese Ressource herunterladen</string>
+    <string name="please_input_server_url">Bitte die Server-URL eingeben (z.B. http://192.168.1.100:5000)</string>
+    <string name="please_first_login">Bitte zuerst anmelden</string>
+    <string name="main_folders_load_failed">Hauptordner konnten nicht geladen werden</string>
+    <string name="network_error">Netzwerkfehler: </string>
+    <string name="login_failed">Anmeldung fehlgeschlagen</string>
+    <string name="login_success">Anmeldung erfolgreich</string>
+    <string name="favorite_complete">Favorit hinzugefügt!</string>
+    <string name="sub_menu_cannot_empty">Das Untermenü darf nicht leer sein</string>
+    <string name="new_sub_menu">Neues Untermenü: </string>
+    <string name="please_input_favorite_url">Bitte den Favoriten-Link eingeben</string>
+    <string name="add_favorite_url">Favoriten-Link hinzufügen</string>
+    <string name="url_correct">Ungültige URL!</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="ok">OK</string>
+    <string name="please_input_sub_menu_name">Bitte den Menünamen eingeben</string>
+    <string name="add_sub_menu">Untermenü hinzufügen</string>
+    <string name="add_favorite">Favorit hinzufügen</string>
+    <string name="select_main_folders">Hauptmenü auswählen</string>
+    <string name="select_sub_menu">Untermenü auswählen</string>
+    <string name="i_need_add_sub_menu">Ich muss ein neues Menü hinzufügen</string>
+    <string name="please_input_link">Link zum Herunterladen</string>
+    <string name="download_the_resource">Diese Ressource herunterladen</string>
+    <string name="click_favorite">Klicken, um zu den Favoriten hinzuzufügen</string>
+</resources>

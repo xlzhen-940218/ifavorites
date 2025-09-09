@@ -26,7 +26,7 @@
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
-                app:title="设置"
+                app:title="@string/add_favorite"
                 app:titleCentered="true"
                 app:titleTextColor="@android:color/black" />
 
@@ -49,7 +49,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:hint="主菜单">
+                    android:hint="@string/select_main_folders">
 
                     <com.google.android.material.textfield.MaterialAutoCompleteTextView
                         android:id="@+id/mainMenuSpinner"
@@ -65,7 +65,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:hint="已有子菜单"
+                    android:hint="@string/select_sub_menu"
                     android:visibility="@{recvFavorite.newSubMenu?View.GONE:View.VISIBLE}">
 
                     <com.google.android.material.textfield.MaterialAutoCompleteTextView
@@ -82,7 +82,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:hint="新增子菜单"
+                    android:hint="@string/add_sub_menu"
                     android:visibility="@{recvFavorite.newSubMenu?View.VISIBLE:View.GONE}">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -96,7 +96,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:checked="@={recvFavorite.newSubMenu}"
-                    android:text="新增菜单" />
+                    android:text="@string/i_need_add_sub_menu" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/noteLayout"
@@ -104,7 +104,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:hint="待下载链接">
+                    android:hint="@string/please_input_link">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/noteEditText"
@@ -121,7 +121,7 @@
                     android:layout_height="wrap_content"
                     android:checked="@={recvFavorite.downloadResource}"
                     android:layout_marginTop="16dp"
-                    android:text="下载关联资源" />
+                    android:text="@string/download_the_resource" />
 
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
@@ -157,7 +157,7 @@
             android:layout_margin="16dp"
             android:visibility="@{recvFavorite.downloading?View.GONE:View.VISIBLE}"
             android:onClick="@{recvFavorite::favoriteClick}"
-            android:text="点击收藏"
+            android:text="@string/click_favorite"
             app:cornerRadius="5dp" />
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>

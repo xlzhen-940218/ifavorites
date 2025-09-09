@@ -73,7 +73,7 @@ public class RecvFavoriteActivity extends BaseActivity<ActivityRecvFavoriteBindi
             // 在 CompletableFuture 的默认线程池中处理异常
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
-                Toast.makeText(this, "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.network_error) + e.getMessage(), Toast.LENGTH_SHORT).show();
             });
             return null;
         });
@@ -97,14 +97,14 @@ public class RecvFavoriteActivity extends BaseActivity<ActivityRecvFavoriteBindi
                     }
                     model.mainAdapter.setData(uiFolders);
                 } else {
-                    Toast.makeText(this, "主文件夹加载失败", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.main_folders_load_failed, Toast.LENGTH_SHORT).show();
                 }
             });
         }).exceptionally(e -> {
             // 在 CompletableFuture 的默认线程池中处理异常
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
-                Toast.makeText(this, "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.network_error) + e.getMessage(), Toast.LENGTH_SHORT).show();
             });
             return null;
         });
@@ -182,7 +182,7 @@ public class RecvFavoriteActivity extends BaseActivity<ActivityRecvFavoriteBindi
                             getProgressStatus(taskIds, atomicInteger);
                         }, 3000);
                     } else {
-                        Toast.makeText(this, "收藏完成！", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, R.string.favorite_complete, Toast.LENGTH_SHORT).show();
                         Intent intent = new Intent(this, MainActivity.class);
                         intent.putExtra("mainId", selectedMainFolderId);
                         intent.putExtra("subId", selectedSubFolderId);
@@ -200,7 +200,7 @@ public class RecvFavoriteActivity extends BaseActivity<ActivityRecvFavoriteBindi
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
                 try {
-                    Toast.makeText(this, "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.network_error) + e.getMessage(), Toast.LENGTH_SHORT).show();
                 } catch (Exception ex) {
                     System.err.println(ex.getMessage());
                 }
@@ -249,7 +249,7 @@ public class RecvFavoriteActivity extends BaseActivity<ActivityRecvFavoriteBindi
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
                 try {
-                    Toast.makeText(this, "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.network_error) + e.getMessage(), Toast.LENGTH_SHORT).show();
                 } catch (Exception ex) {
                     System.err.println(ex.getMessage());
                 }
@@ -283,7 +283,7 @@ public class RecvFavoriteActivity extends BaseActivity<ActivityRecvFavoriteBindi
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
                 try {
-                    Toast.makeText(this, "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.network_error) + e.getMessage(), Toast.LENGTH_SHORT).show();
                 } catch (Exception ex) {
                     System.err.println(ex.getMessage());
                 }
@@ -295,11 +295,11 @@ public class RecvFavoriteActivity extends BaseActivity<ActivityRecvFavoriteBindi
     public void favorite() {
         if (model.newSubMenu.getValue()) {
             if (model.newSubMenuText.getValue().isEmpty()) {
-                Toast.makeText(this, "子菜单不能为空", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.sub_menu_cannot_empty, Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            Toast.makeText(this, "新增子菜单: " + model.newSubMenuText.getValue(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.new_sub_menu) + model.newSubMenuText.getValue(), Toast.LENGTH_SHORT).show();
             createSubFolder(model.newSubMenuText.getValue(), selectedMainFolderId);
         } else {
             addBookmarkUrlServer(model.urlText.getValue(), selectedSubFolderId, model.downloadResource.getValue());

@@ -7,6 +7,7 @@ import com.bumptech.glide.Glide
 import com.xlzhen.ifavorites.R
 import com.xlzhen.ifavorites.api.Bookmark
 import com.xlzhen.ifavorites.api.RetrofitClient
+import com.xlzhen.ifavorites.api.ServerConfig
 import com.xlzhen.ifavorites.databinding.AdapterItemBookmarkBinding
 
 class BookmarkAdapter(
@@ -26,7 +27,8 @@ class BookmarkAdapter(
 
             // 如果有封面图，使用 Glide 加载图片
             if (!bookmark.cover.isNullOrEmpty()) {
-                val coverUrl = RetrofitClient.BASE_URL + bookmark.cover.replace("\\", "/")
+
+                val coverUrl = ServerConfig.BASE_URL + bookmark.cover.replace("\\", "/")
                 Glide.with(binding.imageViewCover.context)
                     .load(coverUrl)
                     .placeholder(R.drawable.photo_error) // 占位图

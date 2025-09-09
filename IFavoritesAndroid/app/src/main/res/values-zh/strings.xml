@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">IFavorites</string>
+    <string name="creator">创作</string>
+    <string name="ifavorite">我的收藏夹</string>
+    <string name="loading">加载中，请稍候...</string>
+    <string name="downloading">%s (%d/%d)</string>
+    <string name="login">登录</string>
+    <string name="please_input_email">请输入邮箱地址</string>
+    <string name="please_input_password">请输入密码</string>
+    <string name="go_register">没有账号？去注册！</string>
+    <string name="go_login">已有帐号，去登陆！</string>
+    <string name="register">注册</string>
+    <string name="download_resource">下载该资源</string>
+    <string name="please_input_server_url">请输入服务器地址（例：http://192.168.1.100:5000）</string>
+    <string name="please_first_login">请先登录</string>
+    <string name="main_folders_load_failed">主文件夹加载失败</string>
+    <string name="network_error">"网络错误: "</string>
+    <string name="login_failed">登录失败</string>
+    <string name="login_success">登录成功</string>
+    <string name="favorite_complete">收藏完成！</string>
+    <string name="sub_menu_cannot_empty">子菜单不能为空</string>
+    <string name="new_sub_menu">"新增子菜单: "</string>
+    <string name="please_input_favorite_url">请输入收藏夹链接</string>
+    <string name="add_favorite_url">新增收藏夹链接</string>
+    <string name="url_correct">url不合法！</string>
+    <string name="cancel">取消</string>
+    <string name="ok">确定</string>
+    <string name="please_input_sub_menu_name">请输入菜单名称</string>
+    <string name="add_sub_menu">新增二级菜单</string>
+    <string name="add_favorite">添加收藏夹</string>
+    <string name="select_main_folders">选择主菜单</string>
+    <string name="select_sub_menu">选择子菜单</string>
+    <string name="i_need_add_sub_menu">我要新增菜单</string>
+    <string name="please_input_link">待下载链接</string>
+    <string name="download_the_resource">下载此资源</string>
+    <string name="click_favorite">点击收藏</string>
+</resources>

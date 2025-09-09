@@ -4,6 +4,7 @@
 # 导入标准库和第三方库
 # --------------------------------------------------------------------------- #
 import json
+import locale
 import os
 import sqlite3
 import subprocess
@@ -47,6 +48,28 @@ download_semaphore = threading.Semaphore(MAX_CONCURRENT_DOWNLOADS)
 # --- 确保上传目录存在 ---
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(UPLOAD_COVER, exist_ok=True)
+
+# 定义一个字典，键是语言代码，值是对应的翻译列表
+TRANSLATIONS = {
+    'zh': ["视频", "音频", "图片", "文档", "压缩文件", "其他"],
+    'en': ["Videos", "Audios", "Photos", "Documents", "Compressed", "Others"],
+    'fr': ["Vidéos", "Audios", "Photos", "Documents", "Compressés", "Autres"],
+    'de': ["Videos", "Audios", "Fotos", "Dokumente", "Komprimierte", "Andere"],
+    'es': ["Videos", "Audios", "Fotos", "Documentos", "Comprimidos", "Otros"],
+    'it': ["Video", "Audio", "Foto", "Documenti", "Compressi", "Altri"],
+    'ja': ["動画", "音声", "画像", "ドキュメント", "圧縮ファイル", "その他"],
+    'ko': ["동영상", "오디오", "사진", "문서", "압축 파일", "기타"],
+}
+
+# 获取系统语言，例如 'zh_CN', 'en_US'
+lang_code = locale.getdefaultlocale()[0]
+
+# 提取语言前缀，例如从 'zh_CN' 中提取 'zh'
+if lang_code:
+    language = lang_code.split('_')[0]
+else:
+    # 如果无法获取，默认使用英语
+    language = 'en'
 
 
 # --------------------------------------------------------------------------- #
@@ -488,7 +511,8 @@ def get_main_folders_api(user_id):
 
         # 如果主文件夹为空，则初始化默认分类
         if not main_folders:
-            main_types = ["视频", "音频", "图片", "文档", "压缩文件", "其他"]
+            main_types = TRANSLATIONS.get(language, TRANSLATIONS['en'])
+
             for name in main_types:
                 main_folder_id = str(uuid.uuid4())
                 cursor.execute("INSERT INTO main_folders (id, name) VALUES (?, ?)", (main_folder_id, name))

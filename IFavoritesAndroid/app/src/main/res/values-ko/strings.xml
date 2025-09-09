@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">IFavorites</string>
+    <string name="creator">창작</string>
+    <string name="ifavorite">내 즐겨찾기</string>
+    <string name="loading">로딩 중입니다, 잠시만 기다려 주세요...</string>
+    <string name="downloading">%s (%d/%d)</string>
+    <string name="login">로그인</string>
+    <string name="please_input_email">이메일 주소를 입력해 주세요</string>
+    <string name="please_input_password">비밀번호를 입력해 주세요</string>
+    <string name="go_register">계정이 없으신가요? 가입하러 가기!</string>
+    <string name="go_login">이미 계정이 있으신가요? 로그인하러 가기!</string>
+    <string name="register">가입</string>
+    <string name="download_resource">이 리소스 다운로드</string>
+    <string name="please_input_server_url">서버 주소를 입력해 주세요 (예: http://192.168.1.100:5000)</string>
+    <string name="please_first_login">먼저 로그인해 주세요</string>
+    <string name="main_folders_load_failed">메인 폴더 불러오기 실패</string>
+    <string name="network_error">네트워크 오류: </string>
+    <string name="login_failed">로그인 실패</string>
+    <string name="login_success">로그인 성공</string>
+    <string name="favorite_complete">즐겨찾기 완료!</string>
+    <string name="sub_menu_cannot_empty">서브메뉴는 비워둘 수 없습니다</string>
+    <string name="new_sub_menu">새 서브메뉴: </string>
+    <string name="please_input_favorite_url">즐겨찾기 링크를 입력해 주세요</string>
+    <string name="add_favorite_url">즐겨찾기 링크 추가</string>
+    <string name="url_correct">URL이 유효하지 않습니다!</string>
+    <string name="cancel">취소</string>
+    <string name="ok">확인</string>
+    <string name="please_input_sub_menu_name">메뉴 이름을 입력해 주세요</string>
+    <string name="add_sub_menu">서브메뉴 추가</string>
+    <string name="add_favorite">즐겨찾기 추가</string>
+    <string name="select_main_folders">메인 메뉴 선택</string>
+    <string name="select_sub_menu">서브메뉴 선택</string>
+    <string name="i_need_add_sub_menu">새로운 메뉴를 추가해야 합니다</string>
+    <string name="please_input_link">다운로드할 링크</string>
+    <string name="download_the_resource">이 리소스 다운로드</string>
+    <string name="click_favorite">클릭하여 즐겨찾기에 추가</string>
+</resources>

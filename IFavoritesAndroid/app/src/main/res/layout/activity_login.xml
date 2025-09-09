@@ -7,6 +7,7 @@
         <variable
             name="loginActivity"
             type="com.xlzhen.ifavorites.viewmodel.LoginActivityViewModel" />
+        <import type="android.view.View"/>
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -28,13 +29,30 @@
             app:layout_constraintTop_toTopOf="parent" />
 
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/server_input_layout"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            android:hint="@string/please_input_server_url"
+            app:layout_constraintTop_toBottomOf="@+id/title_view">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@={loginActivity.serverUrl}"
+                android:inputType="textUri" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/email_text_input_layout"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="10dp"
             android:hint="@string/please_input_email"
-            app:layout_constraintTop_toBottomOf="@+id/title_view">
+            app:layout_constraintTop_toBottomOf="@+id/server_input_layout">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:layout_width="match_parent"

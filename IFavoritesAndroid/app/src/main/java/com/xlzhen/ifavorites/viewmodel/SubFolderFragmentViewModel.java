@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.xlzhen.ifavorites.adapter.BookmarkAdapter;
 import com.xlzhen.ifavorites.api.Bookmark;
 import com.xlzhen.ifavorites.api.RetrofitClient;
+import com.xlzhen.ifavorites.api.ServerConfig;
 import com.xlzhen.ifavorites.fragment.SubFolderFragment;
 import com.xlzhen.mvvm.binding.base.BaseFragmentModel;
 
@@ -41,7 +42,7 @@ public class SubFolderFragmentViewModel extends BaseFragmentModel<SubFolderFragm
     public void setBookmarkData(List<Bookmark> bookmarkData) {
         bookmarkAdapter = new BookmarkAdapter(bookmarkData, bookmark -> {
             if (bookmark.getFilepath() != null) {
-                var filePathUrl = RetrofitClient.BASE_URL + Objects.requireNonNull(bookmark.getFilepath()).replace("\\", "/");
+                var filePathUrl = ServerConfig.BASE_URL + Objects.requireNonNull(bookmark.getFilepath()).replace("\\", "/");
 
                 Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(filePathUrl));
                 intent.setPackage(fragment.requireActivity().getPackageName());

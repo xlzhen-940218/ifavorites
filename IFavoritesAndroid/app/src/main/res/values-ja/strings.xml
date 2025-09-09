@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">IFavorites</string>
+    <string name="creator">クリエイター</string>
+    <string name="ifavorite">お気に入り</string>
+    <string name="loading">読み込み中、しばらくお待ちください...</string>
+    <string name="downloading">%s (%d/%d)</string>
+    <string name="login">ログイン</string>
+    <string name="please_input_email">メールアドレスを入力してください</string>
+    <string name="please_input_password">パスワードを入力してください</string>
+    <string name="go_register">アカウントをお持ちでないですか？登録へ！</string>
+    <string name="go_login">すでにアカウントをお持ちですか？ログインへ！</string>
+    <string name="register">登録</string>
+    <string name="download_resource">このリソースをダウンロード</string>
+    <string name="please_input_server_url">サーバーアドレスを入力してください（例：http://192.168.1.100:5000）</string>
+    <string name="please_first_login">まずログインしてください</string>
+    <string name="main_folders_load_failed">メインフォルダの読み込みに失敗しました</string>
+    <string name="network_error">ネットワークエラー：</string>
+    <string name="login_failed">ログインに失敗しました</string>
+    <string name="login_success">ログインに成功しました</string>
+    <string name="favorite_complete">お気に入りの追加が完了しました！</string>
+    <string name="sub_menu_cannot_empty">サブメニューは空にできません</string>
+    <string name="new_sub_menu">新しいサブメニュー：</string>
+    <string name="please_input_favorite_url">お気に入りリンクを入力してください</string>
+    <string name="add_favorite_url">お気に入りリンクを追加</string>
+    <string name="url_correct">URLが無効です！</string>
+    <string name="cancel">キャンセル</string>
+    <string name="ok">OK</string>
+    <string name="please_input_sub_menu_name">メニュー名を入力してください</string>
+    <string name="add_sub_menu">サブメニューを追加</string>
+    <string name="add_favorite">お気に入りを追加</string>
+    <string name="select_main_folders">メインメニューを選択</string>
+    <string name="select_sub_menu">サブメニューを選択</string>
+    <string name="i_need_add_sub_menu">新しいメニューを追加する必要があります</string>
+    <string name="please_input_link">ダウンロードするリンク</string>
+    <string name="download_the_resource">このリソースをダウンロード</string>
+    <string name="click_favorite">クリックでお気に入りに追加</string>
+</resources>

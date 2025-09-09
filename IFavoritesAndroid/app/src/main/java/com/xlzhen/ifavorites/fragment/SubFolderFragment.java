@@ -68,7 +68,12 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
     }
 
     private void getBookmarks(String folderId) {
-        UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        UserInfo userInfo = null;
+        try {
+            userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        } catch (Exception ex) {
+            System.err.println(ex.getMessage());
+        }
         if (userInfo == null)
             return;
         // 调用封装好的 Kotlin 静态方法
@@ -88,14 +93,23 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             // 在 CompletableFuture 的默认线程池中处理异常
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
-                Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                try {
+                    Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                } catch (Exception ex) {
+                    System.err.println(ex.getMessage());
+                }
             });
             return null;
         });
     }
 
     private void getSubFolders(String folderId) {
-        UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        UserInfo userInfo = null;
+        try {
+            userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        } catch (Exception ex) {
+            System.err.println(ex.getMessage());
+        }
         if (userInfo == null)
             return;
         // 调用封装好的 Kotlin 静态方法
@@ -117,8 +131,9 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
                                     var adapter = (ViewPagerAdapter) binding.viewPager.getAdapter();
                                     if (adapter != null) {
                                         String text = adapter.getItemText(position);
-                                        if(text.length() > 10){
-                                            text = text.substring(0,10);
+                                        if (text.length() > 10) {
+                                            text = text.substring(0, 10);
+                                            text += "...";
                                         }
                                         tab.setText(text);
                                     }
@@ -127,7 +142,15 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
                     } else {
                         viewPagerAdapter.setData(subFolders);
                     }
-
+                    if (requireActivity().getIntent().hasExtra("subId")) {
+                        String subId = requireActivity().getIntent().getStringExtra("subId");
+                        for (int i = 0; i < subFolders.size(); i++) {
+                            if (subFolders.get(i).getId().equals(subId)) {
+                                binding.viewPager.setCurrentItem(i);
+                                break;
+                            }
+                        }
+                    }
                 } else {
                     //Toast.makeText(requireActivity(), "主文件夹加载失败", Toast.LENGTH_SHORT).show();
                 }
@@ -136,7 +159,11 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             // 在 CompletableFuture 的默认线程池中处理异常
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
-                Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                try {
+                    Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                } catch (Exception ex) {
+                    System.err.println(ex.getMessage());
+                }
             });
             return null;
         });
@@ -189,16 +216,21 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
 
     private void createSubFolder(String subName) {
         // 调用封装好的 Kotlin 静态方法
-        UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        UserInfo userInfo = null;
+        try {
+            userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        } catch (Exception ex) {
+            System.err.println(ex.getMessage());
+        }
         if (userInfo == null)
             return;
-        CompletableFuture<Boolean> future = CreateSubFolderService.createSubFoldersAsync(String.format("Bearer %s", userInfo.getUserId()), currentFolderId, subName, userInfo.getUserId());
+        CompletableFuture<String> future = CreateSubFolderService.createSubFoldersAsync(String.format("Bearer %s", userInfo.getUserId()), currentFolderId, subName, userInfo.getUserId());
 
-        future.thenAccept(success -> {
+        future.thenAccept(folderId -> {
             // 在 CompletableFuture 的默认线程池中执行
             // 切换到主线程进行 UI 更新
             new Handler(Looper.getMainLooper()).post(() -> {
-                if (success) {
+                if (!folderId.isEmpty()) {
                     getSubFolders(currentFolderId);
                 }
             });
@@ -206,14 +238,23 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             // 在 CompletableFuture 的默认线程池中处理异常
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
-                Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                try {
+                    Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                } catch (Exception ex) {
+                    System.err.println(ex.getMessage());
+                }
             });
             return null;
         });
     }
 
     public void getProgressStatus(List<String> taskIds, AtomicInteger atomicInteger) {
-        UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        UserInfo userInfo = null;
+        try {
+            userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        } catch (Exception ex) {
+            System.err.println(ex.getMessage());
+        }
         if (userInfo == null)
             return;
         CompletableFuture<Progress> future = GetProgressService.getProgressAsync(String.format("Bearer %s", userInfo.getUserId()), taskIds.get(atomicInteger.get()));
@@ -223,7 +264,7 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             new Handler(Looper.getMainLooper()).post(() -> {
                 model.progressMessage.postValue(progress.getMessage());
                 if ("COMPLETED".equals(progress.getStatus()) || "FAILED".equals(progress.getStatus())) {
-                    if (atomicInteger.get() < taskIds.size()) {
+                    if (atomicInteger.get() < taskIds.size() - 1) {
                         atomicInteger.addAndGet(1);
                         binding.subFolderTabLayout.postDelayed(() -> {
                             getProgressStatus(taskIds, atomicInteger);
@@ -242,14 +283,23 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             // 在 CompletableFuture 的默认线程池中处理异常
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
-                Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                try {
+                    Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                } catch (Exception ex) {
+                    System.err.println(ex.getMessage());
+                }
             });
             return null;
         });
     }
 
     public void recoveryTaskServer() {
-        UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        UserInfo userInfo = null;
+        try {
+            userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        } catch (Exception ex) {
+            System.err.println(ex.getMessage());
+        }
         if (userInfo == null)
             return;
         // 调用封装好的 Kotlin 静态方法
@@ -272,14 +322,23 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             // 在 CompletableFuture 的默认线程池中处理异常
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
-                Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                try {
+                    Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                } catch (Exception ex) {
+                    System.err.println(ex.getMessage());
+                }
             });
             return null;
         });
     }
 
     public void addBookmarkUrlServer(String url, Boolean downloadResource) {
-        UserInfo userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        UserInfo userInfo = null;
+        try {
+            userInfo = StorageUtils.getData(requireActivity(), "userInfo", UserInfo.class);
+        } catch (Exception ex) {
+            System.err.println(ex.getMessage());
+        }
         if (userInfo == null)
             return;
         if (loadingDialog == null) {
@@ -311,7 +370,11 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
             // 在 CompletableFuture 的默认线程池中处理异常
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
-                Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                try {
+                    Toast.makeText(requireActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                } catch (Exception ex) {
+                    System.err.println(ex.getMessage());
+                }
                 loadingDialog.dismiss();
             });
             return null;
@@ -323,24 +386,29 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
     }
 
     public void addBookmarkUrl() {
-        TextInputLayout textInputLayout = (TextInputLayout) ViewGroup.inflate(requireActivity(), R.layout.alert_edittext_layout, null);
-        textInputLayout.setHint("请输入收藏夹链接");
-        textInputLayout.findViewById(R.id.download_checkbox).setVisibility(View.VISIBLE);
-        new AlertDialog.Builder(requireContext())
-                .setTitle("新增收藏夹链接")
-                .setView(textInputLayout)
-                .setPositiveButton("确定", (dialogInterface, i) -> {
-                    TextInputEditText input = textInputLayout.findViewById(R.id.text_input_edit);
-                    MaterialCheckBox checkBox = textInputLayout.findViewById(R.id.download_checkbox);
-                    if (Objects.requireNonNull(input.getText()).length() > 0) {
-                        String url = input.getText().toString();
-                        Boolean downloadResource = checkBox.isChecked();
-                        if (isValidUrl(url)) {
-                            addBookmarkUrlServer(url, downloadResource);
-                        } else {
-                            Toast.makeText(requireActivity(), "url不合法！", Toast.LENGTH_SHORT).show();
+        try {
+            TextInputLayout textInputLayout = (TextInputLayout) ViewGroup.inflate(requireActivity(), R.layout.alert_edittext_layout, null);
+            textInputLayout.setHint("请输入收藏夹链接");
+            textInputLayout.findViewById(R.id.download_checkbox).setVisibility(View.VISIBLE);
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("新增收藏夹链接")
+                    .setView(textInputLayout)
+                    .setPositiveButton("确定", (dialogInterface, i) -> {
+                        TextInputEditText input = textInputLayout.findViewById(R.id.text_input_edit);
+                        MaterialCheckBox checkBox = textInputLayout.findViewById(R.id.download_checkbox);
+                        if (Objects.requireNonNull(input.getText()).length() > 0) {
+                            String url = input.getText().toString();
+                            Boolean downloadResource = checkBox.isChecked();
+                            if (isValidUrl(url)) {
+                                addBookmarkUrlServer(url, downloadResource);
+                            } else {
+                                Toast.makeText(requireActivity(), "url不合法！", Toast.LENGTH_SHORT).show();
+                            }
                         }
-                    }
-                }).setNegativeButton("取消", null).show();
+                    }).setNegativeButton("取消", null).show();
+        } catch (Exception ex) {
+            System.err.println(ex.getMessage());
+        }
+
     }
 }

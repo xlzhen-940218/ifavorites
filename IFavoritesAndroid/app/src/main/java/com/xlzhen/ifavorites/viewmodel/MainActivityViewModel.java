@@ -1,7 +1,9 @@
 package com.xlzhen.ifavorites.viewmodel;
 
+import android.content.res.Configuration;
 import android.view.View;
 
+import androidx.lifecycle.MutableLiveData;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.xlzhen.ifavorites.MainActivity;
@@ -12,10 +14,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivityViewModel extends BaseActivityViewModel<MainActivity> {
-
+    public MutableLiveData<Integer> titleTopPadding = new MutableLiveData<>(50);
     public MainActivityViewModel(MainActivity activity) {
         super(activity);
-
+        int dpTop = 10;
+        Configuration configuration = activity.getResources().getConfiguration();
+        if(configuration.orientation == Configuration.ORIENTATION_PORTRAIT){
+            dpTop = 50;
+        }
+        titleTopPadding.postValue((int) ( dpTop * activity.getResources().getDisplayMetrics().density));
     }
 
 

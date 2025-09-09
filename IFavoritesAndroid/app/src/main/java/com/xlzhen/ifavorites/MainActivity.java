@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class MainActivity extends BaseActivity<ActivityMainBinding, MainActivityViewModel> {
+    private ViewPagerAdapter viewPagerAdapter;
+
     @Override
     protected int getVariableId() {
         return BR.main;
@@ -49,18 +51,30 @@ public class MainActivity extends BaseActivity<ActivityMainBinding, MainActivity
             new Handler(Looper.getMainLooper()).post(() -> {
                 if (mainFolders.size() >= 6) {
                     // 创建适配器并设置给 ViewPager2
-                    ViewPagerAdapter viewPagerAdapter = new ViewPagerAdapter(MainActivity.this, mainFolders, true);
-                    binding.viewPager.setAdapter(viewPagerAdapter);
-
-                    new TabLayoutMediator(binding.mainFolderTabLayout, binding.viewPager,
-                            (tab, position) -> {
-                                // 在这里设置每个 Tab 的文本，通常与适配器中的数据对应
-                                var adapter = (ViewPagerAdapter) binding.viewPager.getAdapter();
-                                if (adapter != null) {
-                                    tab.setText(adapter.getItemText(position));
+                    if(viewPagerAdapter == null) {
+                        viewPagerAdapter = new ViewPagerAdapter(MainActivity.this, mainFolders, true);
+                        binding.viewPager.setAdapter(viewPagerAdapter);
+                        new TabLayoutMediator(binding.mainFolderTabLayout, binding.viewPager,
+                                (tab, position) -> {
+                                    // 在这里设置每个 Tab 的文本，通常与适配器中的数据对应
+                                    var adapter = (ViewPagerAdapter) binding.viewPager.getAdapter();
+                                    if (adapter != null) {
+                                        tab.setText(adapter.getItemText(position));
+                                    }
                                 }
+                        ).attach();
+                    }else{
+                        viewPagerAdapter.setData(mainFolders);
+                    }
+                    if(getIntent().hasExtra("mainId")){
+                        String mainId = getIntent().getStringExtra("mainId");
+                        for (int i = 0; i < mainFolders.size(); i++) {
+                            if(mainFolders.get(i).getId().equals(mainId)){
+                                binding.viewPager.setCurrentItem(i);
+                                break;
                             }
-                    ).attach();
+                        }
+                    }
                 } else {
                     Toast.makeText(MainActivity.this, "主文件夹加载失败", Toast.LENGTH_SHORT).show();
                 }

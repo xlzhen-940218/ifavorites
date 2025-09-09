@@ -283,7 +283,10 @@ def process_video_download(task_id, link, folder_id, user_id, is_download):
                     video_filepath_template = os.path.join(app.config['UPLOAD_FOLDER'], f"{video_file_id}.%(ext)s")
                     cmd = [YTDLP_CMD, video_data.get('webpage_url'), "--remux-video", "mp4", "--cookies", "cookie.txt",
                            "-o", video_filepath_template]
-                    subprocess.run(cmd, check=True, capture_output=True)
+                    result = subprocess.run(cmd, check=True, capture_output=True)
+
+                    print(result.stdout)
+                    print(result.stderr)
 
                     # 下载完成后，确定实际的文件路径（因为扩展名是动态的）
                     final_video_filename = f"{video_file_id}.mp4"

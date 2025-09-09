@@ -18,9 +18,9 @@ fi
 # Determine the installation command
 INSTALL_CMD=""
 if [ "$PKG_MANAGER" = "apt" ]; then
-    INSTALL_CMD="sudo $PKG_MANAGER update && sudo $PKG_MANAGER install -y $PACKAGE_NAME"
+    INSTALL_CMD="$PKG_MANAGER update && $PKG_MANAGER install -y $PACKAGE_NAME"
 elif [ "$PKG_MANAGER" = "dnf" ] || [ "$PKG_MANAGER" = "yum" ]; then
-    INSTALL_CMD="sudo $PKG_MANAGER install -y $PACKAGE_NAME"
+    INSTALL_CMD="$PKG_MANAGER install -y $PACKAGE_NAME"
 fi
 
 # Check if ffmpeg is already installed

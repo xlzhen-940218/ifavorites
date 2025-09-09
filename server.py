@@ -168,7 +168,7 @@ def init_db():
             )
         ''')
         conn.commit()
-        app.logger.debug("数据库初始化完成。")
+        app.logger.info("数据库初始化完成。")
 
 
 def check_duplicate_bookmark(link):
@@ -228,7 +228,7 @@ def process_video_download(task_id, link, folder_id, user_id, is_download):
             try:
                 # --- 内部辅助函数：用于更新数据库中的任务状态 ---
                 def update_task_status(status, progress=None, message=None, result=None):
-                    app.logger.debug(f"[任务更新] ID: {task_id}, 状态: {status}, 进度: {progress}, 消息: {message}")
+                    app.logger.info(f"[任务更新] ID: {task_id}, 状态: {status}, 进度: {progress}, 消息: {message}")
                     with sqlite3.connect(DB_NAME) as conn:
                         cursor = conn.cursor()
                         if progress is not None:
@@ -285,8 +285,8 @@ def process_video_download(task_id, link, folder_id, user_id, is_download):
                            "-o", video_filepath_template]
                     result = subprocess.run(cmd, check=True, capture_output=True)
 
-                    app.logger.debug(result.stdout)
-                    app.logger.debug(result.stderr)
+                    app.logger.info(result.stdout)
+                    app.logger.info(result.stderr)
 
                     # 下载完成后，确定实际的文件路径（因为扩展名是动态的）
                     final_video_filename = f"{video_file_id}.mp4"
@@ -798,7 +798,7 @@ def recovery_all_unfinished_tasks():
         """
         在应用启动时，查找所有未完成的任务（状态不是 COMPLETED）并重新启动它们。
         """
-        app.logger.debug("开始检查并恢复未完成的任务...")
+        app.logger.info("开始检查并恢复未完成的任务...")
         try:
             with sqlite3.connect(DB_NAME) as conn:
                 cursor = conn.cursor()
@@ -807,13 +807,13 @@ def recovery_all_unfinished_tasks():
                 unfinished_tasks = cursor.fetchall()
 
                 if not unfinished_tasks:
-                    app.logger.debug("没有需要恢复的任务。")
+                    app.logger.info("没有需要恢复的任务。")
                     return
 
-                app.logger.debug(f"找到 {len(unfinished_tasks)} 个需要恢复的任务。")
+                app.logger.info(f"找到 {len(unfinished_tasks)} 个需要恢复的任务。")
                 for task in unfinished_tasks:
                     task_id, link, folder_id, user_id, is_download = task
-                    app.logger.debug(f"重新提交任务: {task_id}")
+                    app.logger.info(f"重新提交任务: {task_id}")
                     # 将任务状态重置为 PENDING
                     cursor.execute("UPDATE tasks SET status = ? WHERE id = ?", ('PENDING', task_id))
                     conn.commit()
@@ -821,7 +821,7 @@ def recovery_all_unfinished_tasks():
                     threading.Thread(target=process_video_download,
                                      args=(task_id, link, folder_id, user_id, is_download)).start()
         except Exception as e:
-            app.logger.debug(f"恢复任务时发生错误: {e}")
+            app.logger.info(f"恢复任务时发生错误: {e}")
 
 
 if __name__ == '__main__':

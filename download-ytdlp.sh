@@ -52,8 +52,8 @@ else
 fi
 
 # 创建虚拟环境并构建
-python -m venv venv
-source venv/bin/activate
+# python -m venv venv
+# source venv/bin/activate
 
 python devscripts/install_deps.py --include pyinstaller
 python devscripts/make_lazy_extractors.py

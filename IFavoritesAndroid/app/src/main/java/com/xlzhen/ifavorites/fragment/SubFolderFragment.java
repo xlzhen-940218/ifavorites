@@ -116,7 +116,11 @@ public class SubFolderFragment extends BaseFragment<FragmentSubFolderBinding, Su
                                     // 在这里设置每个 Tab 的文本，通常与适配器中的数据对应
                                     var adapter = (ViewPagerAdapter) binding.viewPager.getAdapter();
                                     if (adapter != null) {
-                                        tab.setText(adapter.getItemText(position));
+                                        String text = adapter.getItemText(position);
+                                        if(text.length() > 10){
+                                            text = text.substring(0,10);
+                                        }
+                                        tab.setText(text);
                                     }
                                 }
                         ).attach();

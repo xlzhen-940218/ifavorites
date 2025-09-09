@@ -326,6 +326,11 @@ def process_video_download(task_id, link, folder_id, user_id, is_download):
             except subprocess.CalledProcessError as e:
                 error_message = f"命令执行失败: {e.stderr}"
                 update_task_status('FAILED', 0, message=error_message)
+                with sqlite3.connect(DB_NAME) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM tasks WHERE id = ?",
+                                   (task_id,))
+                    conn.commit()
             except Exception as e:
                 error_message = f"发生未知错误: {str(e)}"
                 update_task_status('FAILED', 0, message=error_message)

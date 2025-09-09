@@ -84,6 +84,10 @@ public class MainActivity extends BaseActivity<ActivityMainBinding, MainActivity
             // 切换到主线程显示错误信息
             new Handler(Looper.getMainLooper()).post(() -> {
                 Toast.makeText(MainActivity.this, "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                if("retrofit2.HttpException: HTTP 401 UNAUTHORIZED".equals(e.getMessage())){
+                    StorageUtils.removeData(MainActivity.this, "userInfo");
+                    startActivity(new Intent(MainActivity.this, LoginActivity.class));
+                }
             });
             return null;
         });
@@ -101,7 +105,8 @@ public class MainActivity extends BaseActivity<ActivityMainBinding, MainActivity
         if (userInfo == null) {
             Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
             startActivity(new Intent(this, LoginActivity.class));
-
+        }else{
+            initData();
         }
     }
 }

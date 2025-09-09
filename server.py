@@ -41,6 +41,7 @@ else:
 # --- 并发控制 ---
 # 创建一个线程信号量，限制同时进行的下载任务最多为3个，防止服务器过载
 MAX_CONCURRENT_DOWNLOADS = 6
+work_task_ids = []
 download_semaphore = threading.Semaphore(MAX_CONCURRENT_DOWNLOADS)
 
 # --- 确保上传目录存在 ---
@@ -219,6 +220,11 @@ def login_required(f):
 # --------------------------------------------------------------------------- #
 def process_video_download(task_id, link, folder_id, user_id, is_download):
     with app.app_context():
+        if task_id not in work_task_ids:
+            work_task_ids.append(task_id)
+        else:
+            app.logger.error("已经在任务列表。不可重复添加！")
+            return
         """
         在后台线程中处理视频下载的完整流程。
         包括：获取元数据、下载封面、下载视频、保存信息到数据库，并实时更新任务状态。

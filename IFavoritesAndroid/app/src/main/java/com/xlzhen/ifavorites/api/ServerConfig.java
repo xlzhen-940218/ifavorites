@@ -6,7 +6,7 @@ import com.xlzhen.ifavorites.model.ServerUrl;
 import com.xlzhen.mvvm.storage.StorageUtils;
 
 public class ServerConfig {
-    public static String BASE_URL = "http://75.127.13.9:5000/";
+    public static String BASE_URL = "http://192.168.1.100:8090/";
     public static void updateUrl(Context context, String url){
         if(!url.endsWith("/")){
             url += "/";

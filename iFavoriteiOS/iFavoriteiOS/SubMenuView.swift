@@ -12,6 +12,7 @@ struct SubMenuView: View {
     let isMainFolder: Bool
     @StateObject private var appData = AppData()
     @State private var showingAddFolder = false
+    @State private var showingAddBookmark = false
     @State private var newFolderName = ""
     
     var body: some View {
@@ -20,6 +21,9 @@ struct SubMenuView: View {
                 ProgressView("加载中...")
             } else if !isMainFolder {
                 VStack {
+                    if appData.downloading {
+                        CapsuleStatusView(text: "\(appData.dowloadingMessage) \(appData.downloadedCount)/\(appData.taskCount)", backgroundColor: .green)
+                    }
                     if !appData.currentBookmarks.isEmpty {
                         BookmarksView(bookmarks: appData.currentBookmarks)
                     }
@@ -57,7 +61,7 @@ struct SubMenuView: View {
             }else{
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        appData.loadBookmarks(folderId: folder.id)
+                        showingAddBookmark = true
                     }) {
                         Image(systemName: "bookmark")
                     }
@@ -81,6 +85,21 @@ struct SubMenuView: View {
         } message: {
             Text("请输入新子文件夹的名称")
         }
+        .sheet(isPresented: $showingAddBookmark) {
+                    // 使用你的自定义视图
+                    BookmarkSheetView(
+                        showingAddBookmark: $showingAddBookmark,
+                        onConfirm: {url, isDownload in
+                            if !url.isEmpty {
+                                appData.submitDownloadTask(link: url, folderId: folder.id, isDownload: isDownload){ success in
+                                    if success {
+                                        appData.loadBookmarks(folderId: folder.id)
+                                    }
+                                }
+                            }
+                        }
+                    )
+                }
         .alert("错误", isPresented: .constant(!appData.errorMessage.isEmpty)) {
             Button("确定") {
                 appData.errorMessage = ""

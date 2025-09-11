@@ -438,6 +438,10 @@
       };
 
       const handleAddBookmark = async (data) => {
+        console.log('Selected folder:', selectedFolder);
+        if (selectedFolder.main) {
+          return alert('請先選擇一個子文件夾來添加書籤。');
+        }
         setLoading(true);
         const body = JSON.stringify({ ...data, folder_id: selectedFolder.id });
         try {

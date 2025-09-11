@@ -520,7 +520,8 @@ def get_main_folders_api(user_id):
             # 重新查询
             cursor.execute("SELECT id, name FROM main_folders")
             main_folders = [{"id": row['id'], "name": row['name']} for row in cursor.fetchall()]
-
+            for main_folder in main_folders:
+                main_folder['main'] = True
         return jsonify({"success": True, "folders": main_folders})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
@@ -539,6 +540,8 @@ def get_sub_folders_api(user_id, parent_id):
             WHERE uf.user_id = ? AND f.parent_id = ?
         """, (user_id, parent_id))
         sub_folders = [{"id": row['id'], "name": row['name']} for row in cursor.fetchall()]
+        for sub_folder in sub_folders:
+            sub_folder['main'] = False
         return jsonify({"success": True, "folders": sub_folders})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500

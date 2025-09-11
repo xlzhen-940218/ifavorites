@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iFavoriteDesktop</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Prevent FOUC */
+    [x-cloak] {
+      display: none !important;
+    }
+
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* 修复放大遮挡问题 */
+    .bookmark-item {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      overflow: visible !important;
+    }
+
+    .bookmark-item:hover {
+      transform: scale(1.05);
+      z-index: 10;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    .bookmark-item img {
+      border-top-left-radius: 1rem;
+      border-top-right-radius: 1rem;
+    }
+
+    /* 媒体播放器模态框样式 */
+    .media-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.85);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .media-content {
+      max-width: 90%;
+      max-height: 90%;
+      background: black;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .media-controls {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .media-controls button {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 15px;
+      margin: 0 5px;
+      cursor: pointer;
+    }
+
+    .media-controls button:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, createContext, useContext, useCallback } = React;
+
+    // --- Inline SVG Icons (內嵌 SVG 圖標) ---
+    const FolderIcon = ({ size = 20, className = 'w-5 h-5' }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" /></svg>
+    );
+    const PlusCircleIcon = ({ size = 20, className = 'w-5 h-5' }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><path d="M8 12h8" /><path d="M12 8v8" /></svg>
+    );
+    const PlayCircleIcon = ({ size = 20, className = 'w-5 h-5' }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><path d="M10 8l6 4l-6 4V8z" /></svg>
+    );
+    const LogOutIcon = ({ size = 20, className = 'w-5 h-5' }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
+    );
+    const RefreshCcwIcon = ({ size = 20, className = 'w-5 h-5' }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 4v6h-6" /><path d="M4 20v-6h6" /><path d="M21 10a9 9 0 0 1-18 0" /><path d="M4 14a9 9 0 0 1 18 0" /></svg>
+    );
+    const CloseIcon = ({ size = 20, className = 'w-5 h-5' }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+    );
+
+    // --- Real Backend API Service (真實後端API服務) ---
+    const API_BASE_URL = 'http://127.0.0.1:8090';
+
+    const AuthContext = createContext(null);
+
+    // --- Root Component (根組件) ---
+    function App() {
+      const [userId, setUserId] = useState(null);
+      const [isAuthReady, setIsAuthReady] = useState(false);
+
+      useEffect(() => {
+        // In a real Electron app, this token would come from the main process
+        // We simulate a token for this example
+        if (localStorage.getItem('userId')) {
+          setUserId(localStorage.getItem('userId'));
+        }
+        setIsAuthReady(true);
+      }, []);
+
+      // Create a custom apiFetch function that uses the current userId
+      const apiFetch = useCallback(async (endpoint, options = {}) => {
+        const headers = {
+          'Content-Type': 'application/json',
+          ...(userId && { 'Authorization': `Bearer ${userId}` }),
+          ...options.headers,
+        };
+
+        try {
+          const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+          const data = await response.json();
+
+          if (!response.ok) {
+            // Handle API errors (處理API錯誤)
+            console.error('API Error:', data);
+            const error = new Error(data.message || 'Something went wrong');
+            error.status = response.status;
+            throw error;
+          }
+          return data;
+        } catch (error) {
+          console.error('Fetch Error:', error);
+          throw error;
+        }
+      }, [userId]);
+
+      return (
+        <AuthContext.Provider value={{ userId, setUserId, apiFetch }}>
+          <div className="flex flex-col h-screen bg-gray-100 font-sans antialiased">
+            <style dangerouslySetInnerHTML={{
+              __html: `
+              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+              html, body {
+                  font-family: 'Inter', sans-serif;
+              }
+            `
+            }} />
+            <main className="flex-1 flex overflow-hidden">
+              {isAuthReady && (userId ? <MainApp /> : <AuthPage />)}
+            </main>
+          </div>
+        </AuthContext.Provider>
+      );
+    }
+
+    // --- Auth Page (認證頁面) ---
+    function AuthPage() {
+      const { setUserId, apiFetch } = useContext(AuthContext);
+      const [isLogin, setIsLogin] = useState(true);
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [message, setMessage] = useState('');
+      const [loading, setLoading] = useState(false);
+
+      const handleAuth = async () => {
+        setLoading(true);
+        setMessage('');
+        const endpoint = isLogin ? '/login' : '/register';
+        const body = JSON.stringify({ email, password });
+
+        try {
+          const response = await apiFetch(endpoint, { method: 'POST', body });
+          if (response.success) {
+            localStorage.setItem('userId', response.user_id);
+            setUserId(response.user_id);
+          } else {
+            setMessage(response.message);
+          }
+        } catch (error) {
+          setMessage(error.message || 'Network error. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm">
+            <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
+              {isLogin ? '登入' : '註冊'}
+            </h2>
+            <div className="space-y-4">
+              <input
+                type="email"
+                placeholder="電子郵件"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+              />
+              <input
+                type="password"
+                placeholder="密碼"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+              />
+              {message && <p className="text-red-500 text-sm text-center">{message}</p>}
+              <button
+                onClick={handleAuth}
+                disabled={loading}
+                className={`w-full py-2 rounded-xl text-white font-semibold transition-colors ${loading ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+              >
+                {loading ? '處理中...' : (isLogin ? '登入' : '註冊')}
+              </button>
+            </div>
+            <p className="mt-6 text-center text-sm text-gray-600">
+              {isLogin ? '沒有帳號？' : '已有帳號？'}
+              <button onClick={() => setIsLogin(!isLogin)} className="text-indigo-600 hover:underline ml-1">
+                {isLogin ? '註冊' : '登入'}
+              </button>
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // --- Media Player Modal (媒體播放器模態框) ---
+    function MediaPlayerModal({ mediaUrl, mediaType, onClose }) {
+      const [isPlaying, setIsPlaying] = useState(true);
+
+      const renderMedia = () => {
+        if (mediaType === 'video') {
+          return (
+            <video
+              controls
+              autoPlay
+              className="w-full h-full"
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+            >
+              <source src={mediaUrl} />
+              您的瀏覽器不支持視頻播放
+            </video>
+          );
+        } else if (mediaType === 'audio') {
+          return (
+            <div className="flex items-center justify-center h-64 bg-black">
+              <audio
+                controls
+                autoPlay
+                className="w-full"
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+              >
+                <source src={mediaUrl} />
+                您的瀏覽器不支持音頻播放
+              </audio>
+            </div>
+          );
+        } else if (mediaType === 'image') {
+          return (
+            <img
+              src={mediaUrl}
+              alt="Media content"
+              className="w-full h-full object-contain"
+            />
+          );
+        }
+        return null;
+      };
+
+      return (
+        <div className="media-modal">
+          <div className="media-content relative">
+            <button
+              onClick={onClose}
+              className="absolute top-2 right-2 z-10 bg-black bg-opacity-50 rounded-full p-2 text-white hover:bg-opacity-70"
+            >
+              <CloseIcon size={24} />
+            </button>
+            {renderMedia()}
+          </div>
+        </div>
+      );
+    }
+
+    // --- Main App Page (主應用程式頁面) ---
+    function MainApp() {
+      const { userId, setUserId, apiFetch } = useContext(AuthContext);
+      const [mainFolders, setMainFolders] = useState([]);
+      const [selectedFolder, setSelectedFolder] = useState(null);
+      const [subFolders, setSubFolders] = useState({});
+      const [bookmarks, setBookmarks] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [activeTaskId, setActiveTaskId] = useState(null);
+      const [taskProgress, setTaskProgress] = useState(0);
+      const [taskMessage, setTaskMessage] = useState('');
+
+      const [modalType, setModalType] = useState(null);
+      const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+      const [mediaPlayer, setMediaPlayer] = useState({ open: false, url: '', type: '' });
+
+      useEffect(() => {
+        const fetchMainFolders = async () => {
+          setLoading(true);
+          try {
+            const response = await apiFetch('/get_main_folders');
+            if (response.success) {
+              setMainFolders(response.folders);
+              if (response.folders.length > 0) {
+                setSelectedFolder(response.folders[0]);
+              }
+            }
+          } catch (e) {
+            console.error('Failed to fetch main folders', e);
+          } finally {
+            setLoading(false);
+          }
+        };
+        if (userId) {
+          fetchMainFolders();
+        }
+      }, [userId]);
+
+      useEffect(() => {
+        const fetchContent = async () => {
+          if (!selectedFolder) return;
+          setLoading(true);
+          setBookmarks([]);
+          if (!subFolders[selectedFolder.id]) {
+            try {
+              const response = await apiFetch(`/get_sub_folders/${selectedFolder.id}`);
+              if (response.success) {
+                setSubFolders(prev => ({ ...prev, [selectedFolder.id]: response.folders }));
+              }
+            } catch (e) {
+              console.error('Failed to fetch sub folders', e);
+            }
+          }
+          try {
+            const response = await apiFetch(`/get_bookmarks/${selectedFolder.id}`);
+            if (response.success) {
+              setBookmarks(response.bookmarks);
+            }
+          } catch (e) {
+            console.error('Failed to fetch bookmarks', e);
+          } finally {
+            setLoading(false);
+          }
+        };
+        fetchContent();
+      }, [selectedFolder, subFolders]);
+
+      useEffect(() => {
+        if (!activeTaskId) return;
+
+        const pollTask = setInterval(async () => {
+          try {
+            const response = await apiFetch(`/get_progress/${activeTaskId}`);
+            if (response.success) {
+              setTaskProgress(response.progress);
+              setTaskMessage(response.message);
+              if (response.status === 'COMPLETED' || response.status === 'FAILED') {
+                clearInterval(pollTask);
+                setActiveTaskId(null);
+                setTaskProgress(0);
+                setTaskMessage('');
+                const responseBookmarks = await apiFetch(`/get_bookmarks/${selectedFolder.id}`);
+                if (responseBookmarks.success) {
+                  setBookmarks(responseBookmarks.bookmarks);
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Failed to poll task progress', e);
+            clearInterval(pollTask);
+            setActiveTaskId(null);
+            setTaskProgress(0);
+            setTaskMessage('任務進度獲取失敗。');
+          }
+        }, 2000);
+
+        return () => clearInterval(pollTask);
+      }, [activeTaskId, selectedFolder]);
+
+      const handleLogout = () => {
+        setUserId(null);
+      };
+
+      const handleAddFolder = async (name) => {
+        setLoading(true);
+        const body = JSON.stringify({ name, parent_id: selectedFolder.id });
+        try {
+          const response = await apiFetch('/create_folder', { method: 'POST', body });
+          if (response.success) {
+            const mainFoldersResponse = await apiFetch('/get_main_folders');
+            if (mainFoldersResponse.success) {
+              setMainFolders(mainFoldersResponse.folders);
+            }
+            if (selectedFolder.parent_id) {
+              const subFoldersResponse = await apiFetch(`/get_sub_folders/${selectedFolder.parent_id}`);
+              if (subFoldersResponse.success) {
+                setSubFolders(prev => ({ ...prev, [selectedFolder.parent_id]: subFoldersResponse.folders }));
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Failed to create folder', e);
+        } finally {
+          setLoading(false);
+          setModalType(null);
+        }
+      };
+
+      const handleAddBookmark = async (data) => {
+        setLoading(true);
+        const body = JSON.stringify({ ...data, folder_id: selectedFolder.id });
+        try {
+          const response = await apiFetch('/add_bookmark', { method: 'POST', body });
+          if (response.success) {
+            const bookmarksResponse = await apiFetch(`/get_bookmarks/${selectedFolder.id}`);
+            if (bookmarksResponse.success) {
+              setBookmarks(bookmarksResponse.bookmarks);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to add bookmark', e);
+        } finally {
+          setLoading(false);
+          setModalType(null);
+        }
+      };
+
+      const handleSubmitTask = async (data) => {
+        setLoading(true);
+        const body = JSON.stringify({ ...data, folder_id: selectedFolder.id });
+        try {
+          const response = await apiFetch('/craw_url', { method: 'POST', body });
+          if (response.success) {
+            setActiveTaskId(response.task_id);
+          }
+        } catch (e) {
+          console.error('Failed to submit task', e);
+        } finally {
+          setLoading(false);
+          setModalType(null);
+        }
+      };
+
+      // 处理书签点击事件
+      const handleBookmarkClick = (bookmark) => {
+        if (bookmark.filepath) {
+          // 根据文件扩展名确定媒体类型
+          const extension = bookmark.filepath.split('.').pop().toLowerCase();
+          let mediaType = '';
+
+          if (['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(extension)) {
+            mediaType = 'video';
+          } else if (['mp3', 'wav', 'ogg', 'aac', 'flac'].includes(extension)) {
+            mediaType = 'audio';
+          } else if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(extension)) {
+            mediaType = 'image';
+          }
+
+          if (mediaType) {
+            // 显示媒体播放器
+            const mediaUrl = `${API_BASE_URL}/${bookmark.filepath}`;
+            setMediaPlayer({ open: true, url: mediaUrl, type: mediaType });
+          } else {
+            // 不支持的文件类型，跳转到链接
+            window.open(bookmark.link, '_blank');
+          }
+        } else {
+          // 没有文件路径，跳转到链接
+          window.open(bookmark.link, '_blank');
+        }
+      };
+
+      // Folder tree component (文件夾樹狀組件)
+      const FolderTree = ({ folders, parentId = null }) => {
+        if (!folders) return null;
+        return (
+          <ul className="space-y-1">
+            {folders.map(folder => (
+              <li key={folder.id}>
+                <div
+                  onClick={() => setSelectedFolder(folder)}
+                  className={`flex items-center space-x-2 p-2 rounded-xl cursor-pointer transition-colors
+                            ${selectedFolder?.id === folder.id ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'hover:bg-gray-200 text-gray-700'}`}
+                >
+                  <FolderIcon size={18} />
+                  <span>{folder.name}</span>
+                </div>
+                {/* Recursively render subfolders (遞迴渲染子文件夾) */}
+                {selectedFolder?.id === folder.id && subFolders[folder.id] && (
+                  <div className="ml-4 mt-1">
+                    <FolderTree folders={subFolders[folder.id]} parentId={folder.id} />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        );
+      };
+
+      return (
+        <>
+          <div className="flex-none w-64 bg-gray-50 border-r border-gray-200 p-4 overflow-y-auto hidden md:block rounded-br-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-xl font-bold text-gray-800">iFavorite</h1>
+              <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition-colors">
+                <LogOutIcon size={20} />
+              </button>
+            </div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-700">我的收藏</h2>
+              <button onClick={() => setModalType('addFolder')} className="p-1 rounded-full bg-indigo-500 text-white hover:bg-indigo-600 transition-colors">
+                <PlusCircleIcon size={20} />
+              </button>
+            </div>
+            <FolderTree folders={mainFolders} />
+          </div>
+
+          <div className="flex-1 flex flex-col p-4 rounded-tl-2xl rounded-tr-2xl bg-white shadow-xl">
+            <header className="flex items-center justify-between mb-6">
+              <h2 className="text-3xl font-bold text-gray-800">
+                {selectedFolder?.name || '請選擇一個文件夾'}
+              </h2>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setModalType('addBookmark')}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors flex items-center space-x-2"
+                >
+                  <PlusCircleIcon size={20} />
+                  <span>新增書籤</span>
+                </button>
+                <button
+                  onClick={() => setModalType('addTask')}
+                  className="px-4 py-2 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors flex items-center space-x-2"
+                >
+                  <PlayCircleIcon size={20} />
+                  <span>提交任務</span>
+                </button>
+              </div>
+            </header>
+
+            {activeTaskId && (
+              <div className="p-4 mb-4 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <RefreshCcwIcon size={20} className="animate-spin" />
+                  <span>{taskMessage}</span>
+                </div>
+                <div className="w-40 bg-blue-200 rounded-full h-2.5">
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full transition-all"
+                    style={{ width: `${taskProgress}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="flex-1 flex items-center justify-center text-gray-500">
+                <svg className="animate-spin h-8 w-8 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span className="ml-2">載入中...</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {bookmarks.length > 0 ? (
+                  bookmarks.map(bookmark => (
+                    <div
+                      key={bookmark.id}
+                      className="bookmark-item bg-gray-50 rounded-2xl shadow-sm overflow-hidden border border-gray-200"
+                      onClick={() => handleBookmarkClick(bookmark)}
+                    >
+                      <img src={API_BASE_URL + '/' + bookmark.cover} alt={bookmark.title} className="w-full h-40 object-cover cursor-pointer" />
+                      <div className="p-4 cursor-pointer">
+                        <h3 className="text-lg font-semibold text-gray-800 truncate">{bookmark.title}</h3>
+                        <p className="text-sm text-gray-500 line-clamp-2 mt-1">{bookmark.description}</p>
+                        <div className="mt-3 flex justify-between items-center">
+                          <span className="text-indigo-600 text-sm font-medium">
+                            {bookmark.filepath ? '點擊播放媒體' : '點擊查看鏈接'}
+                          </span>
+                          <a
+                            href={bookmark.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-indigo-600 hover:text-indigo-800 transition-colors text-sm font-medium"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            檢視連結
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center text-gray-500 py-12">
+                    <p>該文件夾下沒有書籤。</p>
+                    <p>您可以手動新增，或通過提交任務進行自動抓取。</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {modalType && (
+            <Modal onClose={() => setModalType(null)}>
+              {modalType === 'addFolder' && (
+                <AddFolderForm onSubmit={handleAddFolder} />
+              )}
+              {modalType === 'addBookmark' && (
+                <AddBookmarkForm onSubmit={handleAddBookmark} />
+              )}
+              {modalType === 'addTask' && (
+                <AddTaskForm onSubmit={handleSubmitTask} />
+              )}
+            </Modal>
+          )}
+
+          {mediaPlayer.open && (
+            <MediaPlayerModal
+              mediaUrl={mediaPlayer.url}
+              mediaType={mediaPlayer.type}
+              onClose={() => setMediaPlayer({ open: false, url: '', type: '' })}
+            />
+          )}
+        </>
+      );
+    }
+
+    // --- Modal Component (模態框組件) ---
+    const Modal = ({ children, onClose }) => {
+      return (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg relative">
+            <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            {children}
+          </div>
+        </div>
+      );
+    };
+
+    // --- Add Folder Form (新增文件夾表單) ---
+    const AddFolderForm = ({ onSubmit }) => {
+      const [folderName, setFolderName] = useState('');
+      return (
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold text-gray-800">建立新文件夾</h3>
+          <input
+            type="text"
+            placeholder="文件夾名稱"
+            value={folderName}
+            onChange={(e) => setFolderName(e.target.value)}
+            className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500"
+          />
+          <button
+            onClick={() => onSubmit(folderName)}
+            className="w-full py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700"
+          >
+            建立
+          </button>
+        </div>
+      );
+    };
+
+    // --- Add Bookmark Form (新增書籤表單) ---
+    const AddBookmarkForm = ({ onSubmit }) => {
+      const { apiFetch } = useContext(AuthContext);
+      const [title, setTitle] = useState('');
+      const [description, setDescription] = useState('');
+      const [link, setLink] = useState('');
+      const [cover, setCover] = useState('');
+      const [fileId, setFileId] = useState('');
+      const [coverUploading, setCoverUploading] = useState(false);
+      const [fileUploading, setFileUploading] = useState(false);
+
+      const handleCoverUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        let userId = localStorage.getItem('userId');
+
+        setCoverUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/upload_cover`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${userId}` },
+            body: formData,
+          });
+          const data = await response.json();
+          if (response.ok) {
+            setCover(data.file_id);
+          } else {
+            console.error('封面上传失败:', data.message);
+          }
+        } catch (error) {
+          console.error('上传错误:', error);
+        } finally {
+          setCoverUploading(false);
+        }
+      };
+
+      const handleFileUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        let userId = localStorage.getItem('userId');
+
+        setFileUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/upload_file`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${userId}` },
+            body: formData,
+          });
+          const data = await response.json();
+          if (response.ok) {
+            setFileId(data.file_id);
+          } else {
+            console.error('文件上传失败:', data.message);
+          }
+        } catch (error) {
+          console.error('上传错误:', error);
+        } finally {
+          setFileUploading(false);
+        }
+      };
+
+      return (
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold text-gray-800">手動新增書籤</h3>
+          <input
+            type="text"
+            placeholder="標題"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500"
+          />
+          <input
+            type="text"
+            placeholder="描述"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500"
+          />
+          <input
+            type="url"
+            placeholder="連結 (URL)"
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500"
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">封面圖片</label>
+            <input
+              type="file"
+              onChange={handleCoverUpload}
+              className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500"
+              disabled={coverUploading}
+            />
+            {coverUploading && <span className="text-sm text-gray-500">上傳中...</span>}
+            {cover && !coverUploading && <span className="text-sm text-green-500">上傳成功</span>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">文件</label>
+            <input
+              type="file"
+              onChange={handleFileUpload}
+              className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500"
+              disabled={fileUploading}
+            />
+            {fileUploading && <span className="text-sm text-gray-500">上傳中...</span>}
+            {fileId && !fileUploading && <span className="text-sm text-green-500">上傳成功</span>}
+          </div>
+          <button
+            onClick={() => onSubmit({ title, description, link, cover, file_id: fileId })}
+            className="w-full py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700"
+            disabled={coverUploading || fileUploading}
+          >
+            新增
+          </button>
+        </div>
+      );
+    };
+
+    // --- Submit Task Form (提交任務表單) ---
+    const AddTaskForm = ({ onSubmit }) => {
+      const [link, setLink] = useState('');
+      const [isDownload, setIsDownload] = useState(false);
+
+      return (
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold text-gray-800">提交下載任務</h3>
+          <p className="text-sm text-gray-500">
+            輸入影片或YouTube播放列表連結，後台將自動抓取並建立書籤。
+          </p>
+          <input
+            type="url"
+            placeholder="連結 (YouTube, etc.)"
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-green-500"
+          />
+          <div className="flex items-center space-x-2">
+            <input
+              id="is_download"
+              type="checkbox"
+              checked={isDownload}
+              onChange={(e) => setIsDownload(e.target.checked)}
+              className="rounded text-green-600 focus:ring-green-500"
+            />
+            <label htmlFor="is_download" className="text-gray-700">下載影片文件</label>
+          </div>
+          <button
+            onClick={() => onSubmit({ link, is_download: isDownload })}
+            className="w-full py-2 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700"
+          >
+            提交任務
+          </button>
+        </div>
+      );
+    };
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+
+</html>

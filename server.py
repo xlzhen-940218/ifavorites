@@ -681,6 +681,16 @@ def add_bookmark(user_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        cursor.execute("SELECT id, name FROM main_folders")
+        main_folders = [{"id": row['id'], "name": row['name']} for row in cursor.fetchall()]
+        is_main_folder = False
+        for folder in main_folders:
+            if folder_id in folder['id']:
+                is_main_folder = True
+        if is_main_folder:
+            return jsonify({"success": False, "message": "不能在主文件夹下创建收藏内容！"}), 405
+
         # 检查链接是否已存在，避免重复
         existing_bookmark_id = check_duplicate_bookmark(link)
         if existing_bookmark_id:

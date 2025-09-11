@@ -189,3 +189,5 @@ IFavoritesAndroid/app/ifavorites
 /IFavoritesAndroid/app/release
 yt-dlp-exec
 ffmpeg
+/iFavoriteDesktop/node_modules
+iFavoriteDesktop/package-lock.json
